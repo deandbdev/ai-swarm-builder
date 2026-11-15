@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI agents build a web page</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#0d0e12;color:#e8e9ee;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:8px}
+#wrap{position:relative;flex:none}
+#stage{position:absolute;left:0;top:0;width:360px;height:640px;transform-origin:0 0;background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 0 0 1px #2a2c35,0 30px 80px -20px #000;display:flex;flex-direction:column;color:#222}
+.bar{height:34px;flex:none;background:#e9eaee;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid #d6d8de}
+.dots{display:flex;gap:5px}.dots i{width:8px;height:8px;border-radius:50%;background:#c3c6cf}
+.url{flex:1;background:#fff;border-radius:10px;font-size:11px;padding:4px 10px;color:#555}
+
+/* ---------- страницата: гола -> с оформление ---------- */
+#page{flex:1;min-height:0;overflow:hidden;padding:4px 0;
+  --accent:#64748b;--bg:#f1f1ef;--ink:#33363b;--rad:2px;--sh:0 0 0 rgba(0,0,0,0);--hf:system-ui,sans-serif;--bf:system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);font-family:var(--bf);font-size:12px;transition:background-color .9s,color .9s}
+#page.t1{--accent:var(--ta,#d9622b);--bg:var(--tb,#fbf1e1);--ink:var(--ti,#2a1b12)}
+#page.t2{--rad:16px;--sh:0 10px 22px -10px color-mix(in srgb,var(--ink) 55%,transparent)}
+#page.t3{--hf:'Fraunces',Georgia,serif;--bf:'DM Sans',system-ui,sans-serif}
+#page *{transition:background-color .9s,color .9s,border-radius .7s,box-shadow .7s,border-color .9s}
+#page.notrans,#page.notrans *{transition:none!important;animation:none!important}
+:where(#page h1,#page b,#page span,#page li,#page p,#page a){font-size:12px;font-weight:400;color:inherit;text-decoration:none;list-style:none}
+.badge{position:absolute;z-index:18;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;color:#fff;transform:translate(-50%,-125%);pointer-events:none;white-space:nowrap;animation:badge .25s ease-out both;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.badge.bad{background:#ef4444}.badge.ok{background:#16a34a}
+@keyframes badge{from{opacity:0;transform:translate(-50%,-60%) scale(.6)}}
+
+.raw{outline:1px dashed rgba(90,95,110,.65);outline-offset:-1px;min-height:16px;min-width:20px}
+.born{animation:born .7s ease-out}
+@keyframes born{0%{box-shadow:0 0 0 3px var(--c);background-color:color-mix(in srgb,var(--c) 28%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+
+.slot{margin:5px 8px;border:1.5px dashed #c3c6cd;border-radius:8px;display:grid;place-items:center;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#a0a4ad;overflow:hidden;position:relative}
+.slot.claimed{border-color:var(--c);color:var(--c);background:color-mix(in srgb,var(--c) 9%,transparent);animation:pulse 1s infinite alternate}
+@keyframes pulse{to{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 28%,transparent)}}
+.slot.filled{border-color:transparent;background:none;animation:none;display:block;border-radius:0;color:var(--ink);text-transform:none;letter-spacing:normal;font-size:12px;place-items:normal}
+#s-nav{height:42px}#s-hero{height:204px}#s-cards{height:180px}#s-foot{height:60px}
+#s-post{height:218px}#s-list{height:166px}
+#s-mast{height:70px}#s-tick{height:28px}#s-lead{height:182px}#s-news{height:156px}#s-nfoot{height:40px}
+
+/* навигация */
+.nav ul{display:flex;gap:6px}
+.nav.l{display:flex;align-items:center;justify-content:space-between;padding:0 6px;height:100%}
+.nav.l ul{gap:12px}
+.logo.s{font-family:var(--hf);font-weight:800;font-size:19px}
+.nav.l li{font-weight:500}
+
+/* hero */
+.hero.l{display:flex;flex-direction:column;justify-content:center;gap:8px;padding:14px 16px;height:100%}
+.hero.bg{background-color:var(--accent);background-image:linear-gradient(135deg,rgba(255,255,255,.2),rgba(0,0,0,.28));border-radius:var(--rad);color:#fff}
+.hero h1.s{font-family:var(--hf);font-size:26px;line-height:1.1;font-weight:800}
+.hero p.s{font-size:13px;opacity:.95}
+.hero .btn.s{align-self:flex-start;background:#fff;color:var(--accent);font-weight:700;font-size:13px;padding:8px 16px;border-radius:calc(var(--rad) + 4px)}
+
+/* карти */
+.grid.l{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;height:100%}
+.card.l{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px}
+.card.box{background:#fff;border-radius:var(--rad);box-shadow:var(--sh)}
+.card.s .em{font-size:34px}
+.card.s b{font-family:var(--hf);font-size:14px;font-weight:700}
+.card.s .pr{font-size:12px;font-weight:700;color:var(--accent)}
+
+/* футър */
+.foot.l{display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 14px;height:100%}
+.foot.bg{background:var(--ink);color:var(--bg);border-radius:var(--rad)}
+.foot.s b{font-family:var(--hf);font-size:14px;font-weight:700}
+.foot.s span{font-size:11px}
+
+/* блог: водеща публикация */
+.post.l{display:flex;flex-direction:column;gap:5px;height:100%;padding:0 2px}
+.cover.s{display:grid;place-items:center;height:122px;flex:none;font-size:58px;line-height:1;border-radius:var(--rad);background-color:var(--accent);background-image:linear-gradient(135deg,rgba(255,255,255,.22),rgba(0,0,0,.3))}
+.pill.s{align-self:flex-start;background:var(--accent);color:#fff;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border-radius:calc(var(--rad) + 6px)}
+.post h1.s{font-family:var(--hf);font-size:20px;line-height:1.12;font-weight:800}
+.post p.s{font-size:11px;font-weight:500}
+/* блог: списък с публикации */
+.list.l{display:flex;flex-direction:column;gap:6px;height:100%}
+.row.l{display:flex;align-items:center;gap:10px;flex:1;padding:0 8px;min-height:0}
+.row.box{background:#fff;border-radius:var(--rad);box-shadow:var(--sh)}
+.rb.l{display:flex;flex-direction:column;gap:2px;min-width:0}
+.row.s .th{display:grid;place-items:center;flex:none;width:42px;height:42px;font-size:24px;border-radius:calc(var(--rad) / 1.5);background:color-mix(in srgb,var(--accent) 14%,#fff)}
+.row.s .rb b{font-family:var(--hf);font-size:13px;font-weight:700;line-height:1.15}
+.row.s .rb .rm{font-size:10.5px;font-weight:600;color:var(--accent)}
+/* новини: заглавна лента */
+.mast.l{display:flex;flex-direction:column;align-items:center;gap:3px;height:100%}
+.mast .md.s{font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+.mast .mn.s{font-family:var(--hf);font-size:28px;font-weight:800;line-height:1;letter-spacing:-.01em}
+.msec.l{display:flex;justify-content:space-around;width:100%;padding:3px 0;border-top:1.5px solid var(--ink);border-bottom:1px solid color-mix(in srgb,var(--ink) 30%,transparent)}
+.msec.s li{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+/* новини: извънредно */
+.tick.l{display:flex;align-items:center;gap:8px;height:100%}
+.tlab.s{flex:none;background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:calc(var(--rad) / 2);white-space:nowrap}
+.ttx.s{font-size:11px;font-weight:600;line-height:1.25}
+/* новини: водеща новина */
+.lead.l{display:flex;flex-direction:column;gap:4px;height:100%}
+.limg.s{display:grid;place-items:center;flex:none;height:56px;font-size:40px;line-height:1;border-radius:var(--rad);background-color:color-mix(in srgb,var(--accent) 22%,var(--bg));background-image:linear-gradient(135deg,rgba(255,255,255,.35),rgba(0,0,0,.14))}
+.kick.s{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.lead h1.s{font-family:var(--hf);font-size:20px;line-height:1.12;font-weight:800}
+.lead p.s{font-size:12px;line-height:1.25}
+.by.s{font-size:10.5px;font-weight:600}
+/* новини: заглавия */
+.nlist.l{display:flex;flex-direction:column;height:100%}
+.nrow.l{display:flex;align-items:center;gap:10px;flex:1;min-height:0;border-top:1px solid color-mix(in srgb,var(--ink) 25%,transparent)}
+.nrow.s .nn{flex:none;width:18px;text-align:center;font-family:var(--hf);font-size:22px;font-weight:800;color:var(--accent)}
+.nb.l{display:flex;flex-direction:column;gap:2px;min-width:0}
+.nrow.s .nb b{font-family:var(--hf);font-size:13px;font-weight:700;line-height:1.15}
+.nrow.s .nb .nm{font-size:10.5px;font-weight:600}
+/* блог: абонамент във футъра */
+.bfoot.l{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;height:100%}
+.bfoot.bg{background:var(--ink);color:var(--bg);border-radius:var(--rad)}
+.bfoot.s b{font-family:var(--hf);font-size:14px;font-weight:700}
+.bfoot.s .sb{background:var(--accent);color:#fff;font-weight:700;font-size:12px;padding:7px 14px;border-radius:calc(var(--rad) + 4px);white-space:nowrap}
+
+.caret::after{content:"";display:inline-block;width:2px;height:1em;background:currentColor;margin-left:2px;vertical-align:-2px;animation:blink .6s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* лог */
+#log{flex:none;height:86px;background:#14151a;display:flex;flex-direction:column;gap:5px;padding:7px 12px}
+#msg{height:30px;font-size:11px;line-height:1.3;color:#d5d8e2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#msg b{font-weight:700}
+#chips{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px}
+.chip{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#aeb2bf;white-space:nowrap;overflow:hidden}
+.chip i{width:8px;height:8px;border-radius:50%;flex:none}.chip b{color:#fff;font-weight:600}.chip span{overflow:hidden;text-overflow:ellipsis}
+
+/* хук и финал */
+#hook{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:0 26px;text-align:center;background:rgba(10,11,15,.88);backdrop-filter:blur(7px);color:#fff;font-family:'DM Sans',system-ui,sans-serif;opacity:0;transition:opacity .45s}
+#hook.show{opacity:1}
+#hook h2{font-size:30px;line-height:1.12;font-weight:800;letter-spacing:-.01em}
+#hook p{font-size:15px;line-height:1.4;color:#c9ccd6}
+#hook .tag{font-size:12px;line-height:1.35;color:#fbbf24;border:1px solid rgba(251,191,36,.5);border-radius:14px;padding:5px 12px;margin-top:6px;max-width:100%}
+#hook.out{inset:auto 0 0 0;height:210px;gap:8px;justify-content:flex-end;padding-bottom:18px;background:linear-gradient(to bottom,rgba(10,11,15,0),rgba(10,11,15,.95) 36%);backdrop-filter:none}
+#hook.out h2{font-size:23px}
+#hook.out p{font-size:13px}
+#hook.out .tag{font-size:11px}
+
+/* курсори */
+.cur{position:absolute;left:0;top:0;z-index:20;pointer-events:none;will-change:transform}
+.cur svg{display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));margin:-2px 0 0 -2px;transform-origin:2px 2px}
+.cur em{position:absolute;left:13px;top:17px;font-style:normal;font-size:10px;font-weight:700;color:#fff;padding:2px 7px;border-radius:9px;white-space:nowrap}
+.rip{position:absolute;z-index:19;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;border:2px solid;pointer-events:none;animation:rip .6s ease-out forwards}
+@keyframes rip{to{transform:scale(4.5);opacity:0}}
+
+/* панел */
+#ui{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;font-size:13px;max-width:560px}
+#ui button,#ui select{background:#1d1f27;color:#e8e9ee;border:1px solid #333644;border-radius:9px;padding:6px 11px;font:inherit;cursor:pointer}
+#ui button:hover{background:#262935}#ui button:disabled{opacity:.5;cursor:default}
+#ui label{display:flex;align-items:center;gap:5px;color:#9a9eae}
+#ui small{color:#6f7384;width:100%;text-align:center}
+#ai,#tracebar{display:flex;gap:8px;align-items:center;width:100%;justify-content:center;flex-wrap:wrap}
+#ai input{background:#14151a;color:#e8e9ee;border:1px solid #333644;border-radius:9px;padding:6px 11px;font:inherit;min-width:170px}
+#aistat{color:#f59e0b;font-size:12px}
+#tracebar details{width:100%}#tracebar summary{cursor:pointer;color:#9a9eae;font-size:12px}
+#tracebox{width:100%;height:90px;margin-top:6px;background:#14151a;color:#aeb2bf;border:1px solid #333644;border-radius:9px;font:11px ui-monospace,Consolas,monospace;padding:6px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="url" id="url">🔒 zora.cafe</span></div>
+    <div id="page"></div>
+    <div id="log"></div>
+  </div>
+</div>
+<div id="ui">
+  <div id="ai" style="display:none">
+    <select id="stype" title="Site type" data-i18n-title="siteType"><option value="landing">Landing</option><option value="blog" data-i18n="optBlog">Blog</option><option value="news" data-i18n="optNews">News</option></select>
+    <input id="topic" value="a local bakery" maxlength="80" placeholder="site topic…" data-i18n-ph="topicPh">
+    <select id="lang" title="Language of the site and the agents" data-i18n-title="langTitle"><option value="en">English</option><option value="bg">Български</option></select>
+    <button id="gen" data-i18n="gen">✨ Live agents</button><button id="stop" style="display:none" data-i18n="stop">■ Stop</button>
+    <span id="aistat"></span>
+  </div>
+  <div id="tracebar" style="display:none">
+    <button id="copytrace" data-i18n="copyTrace">📋 Copy recording</button>
+    <details><summary data-i18n="traceSummary">recording (JSON) — if copying fails, select and copy it from here</summary><textarea id="tracebox" readonly></textarea></details>
+  </div>
+  <button id="replay" data-i18n="replay">▶ Replay</button>
+  <select id="plans" title="Saved recordings and plans" data-i18n-title="plansTitle"></select>
+  <button id="loadplan" title="Load a recording or plan from a .json file" data-i18n-title="loadTitle" data-i18n="load">📂 Load</button>
+  <input type="file" id="planfile" accept=".json,application/json" hidden>
+  <button id="saveplan" title="Download the recording or plan as .json" data-i18n-title="saveTitle" data-i18n="save">💾 Save</button>
+  <select id="speed" title="Speed" data-i18n-title="speedTitle"><option value="0.7">0.7×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+  <label><input type="checkbox" id="loop"> <span data-i18n="loop">repeat</span></label>
+  <label title="Caption at the start and a question at the end (only for recordings of real runs)" data-i18n-title="hookTitle"><input type="checkbox" id="hookcb" checked> <span data-i18n="hook">hook and ending</span></label>
+  <label title="Listen to the sounds live (render.mjs adds them to the video)" data-i18n-title="sfxTitle"><input type="checkbox" id="sfxcb"> <span data-i18n="sfx">🔊 sound</span></label>
+  <button id="hide" data-i18n="hide">Hide panel (H)</button>
+  <small data-i18n="hint">To record: hide the panel and capture the screen. Double-click brings the panel back. R — restart.</small>
+</div>
+
+<script>
+/* ============================================================================
+   AI Swarm Builder - single-file page. Code comments below are in Bulgarian.
+   Map of the script (search for the Bulgarian section titles):
+     - plan / TYPES        what a site is made of; each page type (landing,
+                           blog, news) is one object with slots, build steps,
+                           readability checks and agent prompts
+     - step interpreter    every element is built in small steps by "workers"
+                           (cursors) so the build can be watched
+     - measurements        the Builder (plain code) measures real text contrast
+                           and whether content fits its box
+     - realRun()           live mode: Copywriter, Designer and QA are separate
+                           model calls; Builder is code. Every call is recorded
+                           in a swarm-trace/1 JSON (prompt, response, measures)
+     - play(trace)         replays a recording with no model calls
+     - window.swarm        the hook render.mjs uses to play and capture it
+   ============================================================================ */
+const $ = s => document.querySelector(s);
+const stage = $('#stage'), page = $('#page'), logEl = $('#log');
+let speed = 1, runId = 0, S = 1, LANG = 'bg';
+const STALE = new Error('stale');
+
+/* ---------- panel language: the browser language (bg -> Bulgarian, else English); override with ?ui=en|bg ----------
+   This is separate from LANG, which is the language of the text shown INSIDE the build/video. */
+const UI = {
+  en: {
+    title:'AI agents build a web page', siteType:'Site type', optBlog:'Blog', optNews:'News', topicPh:'site topic…',
+    langTitle:'Language of the site and the agents', gen:'✨ Live agents', stop:'■ Stop', copyTrace:'📋 Copy recording',
+    traceSummary:'recording (JSON) — if copying fails, select and copy it from here', replay:'▶ Replay',
+    plansTitle:'Saved recordings and plans', loadTitle:'Load a recording or plan from a .json file', load:'📂 Load',
+    saveTitle:'Download the recording or plan as .json', save:'💾 Save', speedTitle:'Speed', loop:'repeat',
+    hookTitle:'Caption at the start and a question at the end (only for recordings of real runs)', hook:'hook and ending',
+    sfxTitle:'Listen to the sounds live (render.mjs adds them to the video)', sfx:'🔊 sound', hide:'Hide panel (H)',
+    hint:'To record: hide the panel and capture the screen. Double-click brings the panel back. R — restart.',
+    defCafe:'Default (café)', defBlog:'Default (blog)', defNews:'Default (news)',
+    s_cw:'1/4 Copywriter and Designer are working…', s_build:'2/4 Builder assembles and measures (round {n})…',
+    s_qa:'3/4 QA reviews (round {n})…', s_back:'4/4 Sent back for fixes (round {n})…',
+    noBuild:'The recording has no “build” step.', copied:'Recording copied — paste it into a file traces/name.json',
+    copyFail:'Copying failed — the text is selected, press Ctrl+C.', badFile:'The file is not a valid recording or plan (JSON).',
+    noSound:'Sound could not be turned on in this browser.',
+    not_granted:'You have not allowed the page to use Claude.', sampling_disabled:'Claude is not available for this account.',
+    rate_limited:'Too many requests — try again later.', invalid_json:'An agent returned something that is not JSON — try again.',
+    session_expired:'Sign in to your account again.', refused:'Claude declined this topic — try another one.',
+    cancelled:'Stopped.', generic:'Something went wrong — try again.'
+  },
+  bg: {
+    title:'Рояк от АИ агенти строят страница', siteType:'Тип сайт', optBlog:'Блог', optNews:'Новини', topicPh:'тема на сайта…',
+    langTitle:'Език на сайта и на агентите', gen:'✨ Реални агенти', stop:'■ Спри', copyTrace:'📋 Копирай записа',
+    traceSummary:'запис (JSON) — ако копирането не мине, маркирай и копирай оттук', replay:'▶ Пусни отначало',
+    plansTitle:'Запазени записи и планове', loadTitle:'Зареди запис или план от .json файл', load:'📂 Зареди',
+    saveTitle:'Свали записа или плана като .json', save:'💾 Свали', speedTitle:'Скорост', loop:'повтаряй',
+    hookTitle:'Надпис в началото и въпрос накрая (само за записи от реални тестове)', hook:'хук и финал',
+    sfxTitle:'Слушай звуковете на живо (във видеото се добавят от render.mjs)', sfx:'🔊 звук', hide:'Скрий панела (H)',
+    hint:'За запис: скрий панела и запиши екрана. Двоен клик връща панела. R — отначало.',
+    defCafe:'Стандартен (кафене)', defBlog:'Стандартен (блог)', defNews:'Стандартен (новини)',
+    s_cw:'1/4 Copywriter и Designer работят…', s_build:'2/4 Builder сглобява и мери (кръг {n})…',
+    s_qa:'3/4 QA преглежда (кръг {n})…', s_back:'4/4 Връщат се за поправка (кръг {n})…',
+    noBuild:'В записа няма стъпка „build“.', copied:'Записът е копиран — постави го във файл traces/име.json',
+    copyFail:'Копирането не мина — маркирах текста, натисни Ctrl+C.', badFile:'Файлът не е валиден запис или план (JSON).',
+    noSound:'Звукът не се включи в този браузър.',
+    not_granted:'Не си разрешил на страницата да ползва Claude.', sampling_disabled:'Claude не е наличен за този акаунт.',
+    rate_limited:'Твърде много заявки — опитай по-късно.', invalid_json:'Агент върна нещо, което не е JSON — опитай пак.',
+    session_expired:'Влез отново в акаунта си.', refused:'Claude отказа тази тема — пробвай друга.',
+    cancelled:'Спряно.', generic:'Нещо се обърка — опитай пак.'
+  }
+};
+const UI_LANG = (() => {
+  const q = new URLSearchParams(location.search).get('ui');
+  if (q === 'en' || q === 'bg') return q;
+  return /^bg/i.test(navigator.language || '') ? 'bg' : 'en';
+})();
+const ui = (k, n) => String((UI[UI_LANG] && UI[UI_LANG][k]) || UI.en[k] || k).replace('{n}', n);
+function applyUI(){
+  document.documentElement.lang = UI_LANG; document.title = ui('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = ui(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = ui(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = ui(el.dataset.i18nPh); });
+}
+applyUI();
+
+/* ---------- езици (текстовете, които се виждат във видеото) ---------- */
+const T = {
+  en: {
+    slot_nav:'navigation', slot_hero:'hero section', slot_cards:'products', slot_foot:'footer',
+    idle:'waiting…', done:'✓ done', thinking:'thinking…',
+    box:'adds an empty container', logoSlot:'adds a logo slot', typeLogo:'writes the logo', menuList:'adds a menu list', menuItem:'adds menu item {n}',
+    alignRow:'lays out in a row', styleLogo:'styles the logo', unraw:'removes the outlines',
+    titleSlot:'adds a headline slot', subSlot:'adds a subtitle slot', btnSlot:'adds an empty button',
+    typeTitle:'writes the headline', typeSub:'writes the subtitle', typeBtn:'writes the button text',
+    padding:'sets the spacing', bg:'adds the background', styleTitle:'styles the headline', styleSub:'styles the subtitle', styleBtn:'styles the button',
+    grid:'adds an empty grid', card:'new card {n}/3', iconSlot:'adds an icon slot', typeIcon:'places the icon', nameSlot:'adds a name slot', typeName:'writes the name',
+    priceSlot:'adds a price slot', typePrice:'writes the price', cardLayout:'arranges the content', cardStyle:'styles the card', cols:'sets 3 columns',
+    addrSlot:'adds an address slot', typeAddr:'writes the address', layout:'lays out the block', footStyle:'styles the footer',
+    palette:'applies the palette', shape:'rounds corners, adds shadows', font:'sets the typeface',
+    measuring:'measuring contrast and fit…', passed:'✓ passed', rejected:'✗ sent back', fixing:'fixing…', autofix:'auto-fix (code)',
+    autofixMsg:'Auto-fix applied by code, not by a model.', fixedN:'✓ fixed {n} items', allOk:'✓ all readable',
+    slot_post:'featured post', slot_list:'latest posts',
+    coverSlot:'adds a cover slot', typeCover:'places the cover emoji', tagSlot:'adds a category tag', typeTag:'writes the tag',
+    metaSlot:'adds a byline slot', typeMeta:'writes the byline', postLayout:'stacks the post', styleCover:'paints the cover',
+    styleTag:'styles the tag', styleMeta:'styles the byline',
+    list:'adds an empty list', row:'new post {n}/3', thumbSlot:'adds a thumbnail slot', typeThumb:'places the thumbnail',
+    bodySlot:'adds a text block', dateSlot:'adds a date slot', typeDate:'writes the date', bodyLayout:'stacks the text',
+    rowLayout:'lines up the row', rowStyle:'styles the post row', listLayout:'spaces the list',
+    promptSlot:'adds a signup line', typePrompt:'writes the signup line',
+    slot_mast:'masthead', slot_tick:'breaking ticker', slot_lead:'lead story', slot_news:'top stories',
+    mastLayout:'centers the masthead', styleDate:'styles the date', styleSections:'styles the section bar',
+    labelSlot:'adds a label slot', typeLabel:'writes the label', lineSlot:'adds a headline line', typeLine:'writes the headline',
+    styleLabel:'styles the label', styleLine:'styles the line',
+    photoSlot:'adds a photo slot', typePhoto:'places the photo', kickerSlot:'adds a kicker slot', typeKicker:'writes the kicker',
+    deckSlot:'adds a summary slot', typeDeck:'writes the summary', leadLayout:'stacks the story',
+    stylePhoto:'frames the photo', styleKicker:'styles the kicker', styleDeck:'styles the summary',
+    story:'new story {n}/3', numSlot:'adds a number slot', typeNum:'writes the number'
+  },
+  bg: {
+    slot_nav:'навигация', slot_hero:'hero секция', slot_cards:'продукти', slot_foot:'футър',
+    idle:'чака…', done:'✓ готов', thinking:'мисли…',
+    box:'слага празен контейнер', logoSlot:'добавя място за лого', typeLogo:'пише логото', menuList:'добавя списък за менюто', menuItem:'добавя елемент {n}',
+    alignRow:'подрежда в ред', styleLogo:'оформя логото', unraw:'маха рамките',
+    titleSlot:'добавя място за заглавие', subSlot:'добавя място за подзаглавие', btnSlot:'добавя празен бутон',
+    typeTitle:'пише заглавието', typeSub:'пише подзаглавието', typeBtn:'пише текста на бутона',
+    padding:'подрежда отстъпите', bg:'слага фон', styleTitle:'оформя заглавието', styleSub:'оформя подзаглавието', styleBtn:'оформя бутона',
+    grid:'слага празна решетка', card:'нова карта {n}/3', iconSlot:'място за икона', typeIcon:'слага иконата', nameSlot:'място за име', typeName:'пише името',
+    priceSlot:'място за цена', typePrice:'пише цената', cardLayout:'подрежда съдържанието', cardStyle:'оформя картата', cols:'подрежда в 3 колони',
+    addrSlot:'място за адрес', typeAddr:'пише адреса', layout:'подрежда блока', footStyle:'оформя футъра',
+    palette:'слага цветовата палитра', shape:'заоблени ъгли и сенки', font:'слага шрифт',
+    measuring:'мери контраст и размери…', passed:'✓ одобрено', rejected:'✗ върнато', fixing:'поправя…', autofix:'автопоправка (код)',
+    autofixMsg:'Автопоправка от код, не от модел.', fixedN:'✓ поправени {n} елемента', allOk:'✓ всичко е четимо',
+    slot_post:'водеща публикация', slot_list:'последни публикации',
+    coverSlot:'добавя място за корица', typeCover:'слага емотикона на корицата', tagSlot:'добавя етикет за категория', typeTag:'пише етикета',
+    metaSlot:'добавя място за автор', typeMeta:'пише автора', postLayout:'подрежда публикацията', styleCover:'оцветява корицата',
+    styleTag:'оформя етикета', styleMeta:'оформя автора',
+    list:'слага празен списък', row:'нова публикация {n}/3', thumbSlot:'добавя място за миниатюра', typeThumb:'слага миниатюрата',
+    bodySlot:'добавя текстов блок', dateSlot:'добавя място за дата', typeDate:'пише датата', bodyLayout:'подрежда текста',
+    rowLayout:'подрежда реда', rowStyle:'оформя реда', listLayout:'разтоварва списъка',
+    promptSlot:'добавя ред за абонамент', typePrompt:'пише реда за абонамент',
+    slot_mast:'заглавна лента', slot_tick:'извънредна лента', slot_lead:'водеща новина', slot_news:'топ новини',
+    mastLayout:'центрира заглавната лента', styleDate:'оформя датата', styleSections:'оформя лентата с рубрики',
+    labelSlot:'добавя място за етикет', typeLabel:'пише етикета', lineSlot:'добавя ред за заглавие', typeLine:'пише заглавието',
+    styleLabel:'оформя етикета', styleLine:'оформя реда',
+    photoSlot:'добавя място за снимка', typePhoto:'слага снимката', kickerSlot:'добавя място за рубрика', typeKicker:'пише рубриката',
+    deckSlot:'добавя място за резюме', typeDeck:'пише резюмето', leadLayout:'подрежда новината',
+    stylePhoto:'рамкира снимката', styleKicker:'оформя рубриката', styleDeck:'оформя резюмето',
+    story:'нова новина {n}/3', numSlot:'добавя място за номер', typeNum:'пише номера'
+  }
+};
+const tr = (k, n) => String((T[LANG] && T[LANG][k]) || T.en[k] || k).replace('{n}', n);
+const sayOf = o => !o.say ? null : Array.isArray(o.say) ? tr(o.say[0], o.say[1]) : tr(o.say);
+
+const ROLES = [
+  {k:'builder',    n:'Builder',    c:'#3b82f6', x0:-40, y0:300},   // код (не е модел)
+  {k:'copywriter', n:'Copywriter', c:'#ec4899', x0:400, y0:140},   // Claude
+  {k:'designer',   n:'Designer',   c:'#f59e0b', x0:170, y0:720},   // Claude
+  {k:'qa',         n:'QA',         c:'#22c55e', x0:400, y0:560}    // Claude + измервания от код
+];
+const defer = () => { let r; const p = new Promise(x => r = x); p.resolve = r; return p; };
+
+/* ---------- план (съдържание на сайта) ---------- */
+const DEFAULT_PLAN = {
+  url:'zora.cafe', brand:'Зора ☕', nav:['Меню','За нас','Контакти'],
+  hero:{title:'Първото кафе на деня', sub:'Прясно изпечено, всяка сутрин от 7:00.', button:'Резервирай маса'},
+  cards:[{icon:'☕',name:'Еспресо',price:'1.60 €'},{icon:'🥐',name:'Кроасан',price:'1.50 €'},{icon:'🧁',name:'Мъфин',price:'1.80 €'}],
+  footer:{name:'Кафе Зора', line:'📍 ул. Витоша 12 · всеки ден 7:00–19:00'},
+  theme:{accent:'#d9622b', bg:'#fbf1e1', ink:'#2a1b12'}
+};
+const DEFAULT_BLOG = {
+  type:'blog', url:'patepisi.blog', brand:'Пътеписи ✈', nav:['Блог','За мен','Контакт'],
+  post:{cover:'🌄', tag:'Пътуване', title:'Три дни сред облаците на Рила', meta:'От Мая · 6 мин четене'},
+  rows:[{icon:'🥾', title:'Как да изберем обувки за планина', meta:'12 ное · Съвети'},
+        {icon:'🍲', title:'Какво се яде в планината', meta:'5 ное · Храна'},
+        {icon:'📷', title:'Снимки на изгрева без статив', meta:'28 окт · Фото'}],
+  footer:{text:'Нови истории на имейл', button:'Абонирай се'},
+  theme:{accent:'#2f6f5e', bg:'#f4f1ea', ink:'#1d2a26'}
+};
+const DEFAULT_NEWS = {
+  type:'news', url:'dnevnik.news', brand:'Дневник', date:'Сряда, 11 ноември', sections:['Начало','Свят','Тех','Спорт'],
+  ticker:{label:'Извънредно', text:'Мостът се отваря в понеделник'},
+  lead:{img:'🌉', kicker:'Инфраструктура', title:'Мостът вече има дата за откриване', deck:'След три години строеж пътят между двата бряга най-после се отваря.', byline:'От Иван Петров · преди 2 ч'},
+  stories:[{title:'Цените на тока се връщат към нормалното', meta:'преди 1 ч · Икономика'},
+           {title:'Нов рекорд за националите по плуване', meta:'преди 3 ч · Спорт'},
+           {title:'Учени откриха нов вид пеперуда в Пирин', meta:'преди 5 ч · Наука'}],
+  footer:{name:'Дневник', line:'© 2026 · редакция@dnevnik.news'},
+  theme:{accent:'#b3261e', bg:'#f7f3ea', ink:'#1c1b19'}
+};
+let TYPE = null;                                   // активният тип сайт (виж TYPES)
+let currentPlan = DEFAULT_PLAN, currentTrace = null, lastPlayed = null;
+
+const clip = (s, n, d) => { s = (typeof s === 'string' ? s : '').trim().replace(/\s+/g, ' '); return s ? (s.length > n ? s.slice(0, n - 1) + '…' : s) : d; };
+const isHex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+const lum = h => { const c = [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+/* loose=true: за записани тестове — цветовете НЕ се „оправят“ тихо, за да може QA да види реалния проблем */
+function sanitize(p, loose){ return TYPES[p && p.type] ? TYPES[p.type].sanitize(p, loose) : TYPES.landing.sanitize(p, loose); }
+function sanitizeLanding(p, loose){
+  const D = DEFAULT_PLAN; p = p && typeof p === 'object' ? p : {};
+  const L = loose ? {brand:18, nav:12, title:44, sub:100, btn:24, name:14, price:10, fname:24, line:56} : {brand:14, nav:10, title:30, sub:52, btn:20, name:12, price:9, fname:22, line:46};
+  const h = p.hero || {}, f = p.footer || {}, t = p.theme || {};
+  const arr = (x, n) => Array.isArray(x) ? x.slice(0, n) : [];
+  const nav = arr(p.nav, 3).map((x, i) => clip(x, L.nav, D.nav[i]));
+  while (nav.length < 3) nav.push(D.nav[nav.length]);
+  const cards = arr(p.cards, 3).map((c, i) => { c = c || {}; return {
+    icon: Array.from(clip(c.icon, 8, D.cards[i].icon)).slice(0, 2).join(''),
+    name: clip(c.name, L.name, D.cards[i].name), price: clip(c.price, L.price, D.cards[i].price) }; });
+  while (cards.length < 3) cards.push(D.cards[cards.length]);
+  const okA = loose ? isHex(t.accent) : isHex(t.accent) && lum(t.accent) < .3;
+  const okB = loose ? isHex(t.bg) : isHex(t.bg) && lum(t.bg) > .75;
+  const okI = loose ? isHex(t.ink) : isHex(t.ink) && lum(t.ink) < .08;
+  return {
+    type:'landing',
+    url: clip(p.url, 22, D.url).replace(/\s/g, ''), brand: clip(p.brand, L.brand, D.brand), nav, cards,
+    hero: {title: clip(h.title, L.title, D.hero.title), sub: clip(h.sub, L.sub, D.hero.sub), button: clip(h.button, L.btn, D.hero.button)},
+    footer: {name: clip(f.name, L.fname, D.footer.name), line: clip(f.line, L.line, D.footer.line)},
+    theme: {accent: okA ? t.accent : D.theme.accent, bg: okB ? t.bg : D.theme.bg, ink: okI ? t.ink : D.theme.ink}
+  };
+}
+function sanitizeBlog(p, loose){
+  const D = DEFAULT_BLOG; p = p && typeof p === 'object' ? p : {};
+  const L = loose ? {brand:18, nav:12, tag:18, title:60, meta:46, rt:50, rm:32, ft:32, btn:20} : {brand:14, nav:10, tag:12, title:44, meta:36, rt:34, rm:24, ft:24, btn:14};
+  const po = p.post || {}, f = p.footer || {}, t = p.theme || {};
+  const arr = (x, n) => Array.isArray(x) ? x.slice(0, n) : [];
+  const emo = (s, d) => Array.from(clip(s, 8, d)).slice(0, 2).join('');
+  const nav = arr(p.nav, 3).map((x, i) => clip(x, L.nav, D.nav[i]));
+  while (nav.length < 3) nav.push(D.nav[nav.length]);
+  const rows = arr(p.rows, 3).map((r, i) => { r = r || {}; return {icon:emo(r.icon, D.rows[i].icon), title:clip(r.title, L.rt, D.rows[i].title), meta:clip(r.meta, L.rm, D.rows[i].meta)}; });
+  while (rows.length < 3) rows.push(D.rows[rows.length]);
+  const okA = loose ? isHex(t.accent) : isHex(t.accent) && lum(t.accent) < .3;
+  const okB = loose ? isHex(t.bg) : isHex(t.bg) && lum(t.bg) > .75;
+  const okI = loose ? isHex(t.ink) : isHex(t.ink) && lum(t.ink) < .08;
+  return {
+    type:'blog', url:clip(p.url, 22, D.url).replace(/\s/g, ''), brand:clip(p.brand, L.brand, D.brand), nav,
+    post:{cover:emo(po.cover, D.post.cover), tag:clip(po.tag, L.tag, D.post.tag), title:clip(po.title, L.title, D.post.title), meta:clip(po.meta, L.meta, D.post.meta)},
+    rows, footer:{text:clip(f.text, L.ft, D.footer.text), button:clip(f.button, L.btn, D.footer.button)},
+    theme:{accent:okA ? t.accent : D.theme.accent, bg:okB ? t.bg : D.theme.bg, ink:okI ? t.ink : D.theme.ink}
+  };
+}
+function sanitizeNews(p, loose){
+  const D = DEFAULT_NEWS; p = p && typeof p === 'object' ? p : {};
+  const L = loose ? {brand:20, date:28, sec:10, tl:14, tt:54, kick:20, title:72, deck:130, by:44, st:56, sm:32, fn:26, fl:56}
+                  : {brand:16, date:22, sec:8, tl:10, tt:40, kick:14, title:52, deck:96, by:34, st:40, sm:24, fn:22, fl:46};
+  const tk = p.ticker || {}, ld = p.lead || {}, f = p.footer || {}, t = p.theme || {};
+  const arr = (x, n) => Array.isArray(x) ? x.slice(0, n) : [];
+  const emo = (s, d) => Array.from(clip(s, 8, d)).slice(0, 2).join('');
+  const sections = arr(p.sections, 4).map((x, i) => clip(x, L.sec, D.sections[i]));
+  while (sections.length < 4) sections.push(D.sections[sections.length]);
+  const stories = arr(p.stories, 3).map((s, i) => { s = s || {}; return {title:clip(s.title, L.st, D.stories[i].title), meta:clip(s.meta, L.sm, D.stories[i].meta)}; });
+  while (stories.length < 3) stories.push(D.stories[stories.length]);
+  const okA = loose ? isHex(t.accent) : isHex(t.accent) && lum(t.accent) < .3;
+  const okB = loose ? isHex(t.bg) : isHex(t.bg) && lum(t.bg) > .75;
+  const okI = loose ? isHex(t.ink) : isHex(t.ink) && lum(t.ink) < .08;
+  return {
+    type:'news', url:clip(p.url, 22, D.url).replace(/\s/g, ''), brand:clip(p.brand, L.brand, D.brand), date:clip(p.date, L.date, D.date), sections,
+    ticker:{label:clip(tk.label, L.tl, D.ticker.label), text:clip(tk.text, L.tt, D.ticker.text)},
+    lead:{img:emo(ld.img, D.lead.img), kicker:clip(ld.kicker, L.kick, D.lead.kicker), title:clip(ld.title, L.title, D.lead.title), deck:clip(ld.deck, L.deck, D.lead.deck), byline:clip(ld.byline, L.by, D.lead.byline)},
+    stories, footer:{name:clip(f.name, L.fn, D.footer.name), line:clip(f.line, L.fl, D.footer.line)},
+    theme:{accent:okA ? t.accent : D.theme.accent, bg:okB ? t.bg : D.theme.bg, ink:okI ? t.ink : D.theme.ink}
+  };
+}
+const copyOfNews = P => ({type:'news', url:P.url, brand:P.brand, date:P.date, sections:P.sections, ticker:P.ticker, lead:P.lead, stories:P.stories, footer:P.footer});
+function diffNews(a, b){
+  const ch = [], d = (id, x, y) => { if (x !== y) ch.push({id, text:y}); };
+  d('#md', a.date, b.date); d('#mn', a.brand, b.brand);
+  b.sections.forEach((t, i) => d('#ms' + i, a.sections[i], t));
+  d('#tl', a.ticker.label, b.ticker.label); d('#tt', a.ticker.text, b.ticker.text);
+  d('#li', a.lead.img, b.lead.img); d('#lk', a.lead.kicker, b.lead.kicker); d('#lh', a.lead.title, b.lead.title); d('#ld', a.lead.deck, b.lead.deck); d('#lb', a.lead.byline, b.lead.byline);
+  b.stories.forEach((s, i) => { d('#nt' + (i + 1), a.stories[i].title, s.title); d('#nm' + (i + 1), a.stories[i].meta, s.meta); });
+  d('#fb', a.footer.name, b.footer.name); d('#fs', a.footer.line, b.footer.line);
+  return ch;
+}
+const copyOfLanding = P => ({type:'landing', url:P.url, brand:P.brand, nav:P.nav, hero:P.hero, cards:P.cards, footer:P.footer});
+const copyOfBlog = P => ({type:'blog', url:P.url, brand:P.brand, nav:P.nav, post:P.post, rows:P.rows, footer:P.footer});
+const copyOf = P => P && P.type === 'blog' ? copyOfBlog(P) : P && P.type === 'news' ? copyOfNews(P) : copyOfLanding(P);
+const diffCopy = (a, b) => (b && b.type === 'blog' ? diffBlog : b && b.type === 'news' ? diffNews : diffLanding)(a, b);
+function diffBlog(a, b){
+  const ch = [], d = (id, x, y) => { if (x !== y) ch.push({id, text:y}); };
+  d('#logo', a.brand, b.brand);
+  b.nav.forEach((t, i) => d('#m' + i, a.nav[i], t));
+  d('#cover', a.post.cover, b.post.cover); d('#pill', a.post.tag, b.post.tag); d('#ph', a.post.title, b.post.title); d('#pm', a.post.meta, b.post.meta);
+  b.rows.forEach((r, i) => { d('#th' + (i + 1), a.rows[i].icon, r.icon); d('#rt' + (i + 1), a.rows[i].title, r.title); d('#rm' + (i + 1), a.rows[i].meta, r.meta); });
+  d('#fb', a.footer.text, b.footer.text); d('#fbtn', a.footer.button, b.footer.button);
+  return ch;
+}
+function diffLanding(a, b){
+  const ch = [], d = (id, x, y) => { if (x !== y) ch.push({id, text:y}); };
+  d('#logo', a.brand, b.brand);
+  b.nav.forEach((t, i) => d('#m' + i, a.nav[i], t));
+  d('#h1', a.hero.title, b.hero.title); d('#hp', a.hero.sub, b.hero.sub); d('#btn', a.hero.button, b.hero.button);
+  b.cards.forEach((c, i) => { d('#e' + (i + 1), a.cards[i].icon, c.icon); d('#n' + (i + 1), a.cards[i].name, c.name); d('#p' + (i + 1), a.cards[i].price, c.price); });
+  d('#fb', a.footer.name, b.footer.name); d('#fs', a.footer.line, b.footer.line);
+  return ch;
+}
+
+const setTheme = t => { page.style.setProperty('--ta', t.accent); page.style.setProperty('--tb', t.bg); page.style.setProperty('--ti', t.ink); };
+function msgBar(role, text){
+  const el = $('#msg'), r = ROLES.find(x => x.k === role); if (!el || !r) return;
+  el.innerHTML = ''; const b = document.createElement('b'); b.style.color = r.c; b.textContent = r.n + ': ';
+  el.append(b, document.createTextNode(text));
+}
+function resetStage(P){
+  P = P || DEFAULT_PLAN; TYPE = TYPES[P.type] || TYPES.landing;
+  stage.querySelectorAll('.cur,.rip,.badge,#hook').forEach(e => e.remove());
+  page.className = ''; page.removeAttribute('style');
+  setTheme(P.theme);
+  $('#url').textContent = '🔒 ' + P.url;
+  page.innerHTML = TYPE.slots.map(s => `<div class="slot" id="${s[0].slice(1)}"><span>${tr(s[1])}</span></div>`).join('');
+  logEl.innerHTML = '<div id="msg"></div><div id="chips">' + ROLES.map(r =>
+    `<div class="chip"><i style="background:${r.c}"></i><b>${r.n}</b><span id="st-${r.k}">${tr('idle')}</span></div>`).join('') + '</div>';
+}
+
+/* ---------- звук: синтезиран с WebAudio (без файлове), еднакъв на живо и при запис на видео ---------- */
+const PITCH = {builder:520, copywriter:780, designer:660, qa:880};
+const NB = new WeakMap();
+const noiseBuf = ctx => { let b = NB.get(ctx); if (!b){ b = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; NB.set(ctx, b); } return b; };
+function tone(ctx, dest, t, o){
+  const osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = o.type || 'sine';
+  osc.frequency.setValueAtTime(o.f, t); if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t + (o.a || .003) + o.d);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(o.peak, t + (o.a || .003)); g.gain.exponentialRampToValueAtTime(.0001, t + (o.a || .003) + o.d);
+  let out = osc; if (o.lp){ const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; osc.connect(f); out = f; }
+  out.connect(g); g.connect(dest); osc.start(t); osc.stop(t + (o.a || .003) + o.d + .03);
+}
+function noise(ctx, dest, t, o){
+  const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = noiseBuf(ctx); src.loop = true;
+  let node = src;
+  if (o.hp){ const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = o.hp; node.connect(f); node = f; }
+  if (o.bp){ const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(o.bp[0], t); f.frequency.exponentialRampToValueAtTime(o.bp[1], t + o.d); node.connect(f); node = f; }
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(o.peak, t + Math.min(.02, o.d / 3)); g.gain.exponentialRampToValueAtTime(.0001, t + o.d);
+  node.connect(g); g.connect(dest); src.start(t, Math.random() * .5); src.stop(t + o.d + .03);
+}
+function synth(ctx, t, type, v, dest){
+  switch (type){
+    case 'click': { const f = PITCH[v.role] || 600; tone(ctx, dest, t, {f, f2:f * .7, type:'triangle', a:.002, d:.05, peak:.16}); noise(ctx, dest, t, {d:.012, peak:.12, hp:2500}); break; }
+    case 'key':   noise(ctx, dest, t, {d:.014, peak:.07, hp:3500}); tone(ctx, dest, t, {f:180 + Math.random() * 60, a:.002, d:.025, peak:.05}); break;
+    case 'pop':   tone(ctx, dest, t + .05, {f:400, f2:900, a:.003, d:.07, peak:.1}); break;
+    case 'scan':  tone(ctx, dest, t, {f:520 * Math.pow(1.06, (v.i || 0) % 14), a:.002, d:.05, peak:.05}); break;
+    case 'bad':   tone(ctx, dest, t, {f:210, f2:150, type:'sawtooth', a:.004, d:.16, peak:.1, lp:700}); break;
+    case 'pass':  [659.25, 880, 1108.7].forEach((f, i) => tone(ctx, dest, t + i * .09, {f, type:'triangle', a:.005, d:.45, peak:.14})); break;
+    case 'reject':[196, 164.8].forEach((f, i) => tone(ctx, dest, t + i * .17, {f, type:'sawtooth', a:.005, d:.2, peak:.13, lp:520})); break;
+    case 'whoosh':noise(ctx, dest, t, {d:.45, peak:.12, bp:[300 * (v.k || 1), 3200 * (v.k || 1)]}); break;
+    case 'hit':   tone(ctx, dest, t, {f:110, f2:40, a:.004, d:.45, peak:.38}); noise(ctx, dest, t, {d:.5, peak:.1, bp:[250, 2600]}); break;
+    case 'chime': [880, 1318.5].forEach((f, i) => tone(ctx, dest, t + i * .12, {f, type:'triangle', a:.005, d:.6, peak:.12})); break;
+  }
+}
+function sfxChain(ctx){
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
+  const g = ctx.createGain(); g.gain.value = .9; g.connect(comp); comp.connect(ctx.destination); return g;
+}
+const SFX = {
+  log:[], t0:performance.now(), live:null, master:null, scanI:0,
+  reset(){ SFX.log = []; SFX.t0 = performance.now(); SFX.scanI = 0; },
+  hit(type, v){
+    v = v || {}; SFX.log.push({t:+((performance.now() - SFX.t0) / 1000).toFixed(3), type, v});
+    if (SFX.live){ try { synth(SFX.live, SFX.live.currentTime + .02, type, v, SFX.master); } catch(e){} }
+  }
+};
+/* офлайн рендер на всички записани звуци -> 16-битов mono PCM (base64), за render.mjs */
+async function renderAudio(total){
+  const sr = 44100, ctx = new OfflineAudioContext(1, Math.ceil(total * sr), sr), m = sfxChain(ctx);
+  for (const e of SFX.log) if (e.t < total) synth(ctx, e.t, e.type, e.v || {}, m);
+  const buf = await ctx.startRendering(), d = buf.getChannelData(0), bytes = new Uint8Array(d.length * 2), dv = new DataView(bytes.buffer);
+  for (let i = 0; i < d.length; i++){ const x = Math.max(-1, Math.min(1, d[i])); dv.setInt16(i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+  let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/* ---------- курсори ---------- */
+function mkAgent(def, my){
+  const el = document.createElement('div');
+  el.className = 'cur';
+  el.innerHTML = `<svg width="20" height="22" viewBox="0 0 20 22"><path d="M2 2 L2 18 L6.5 14 L9.5 21 L12.5 19.7 L9.6 12.8 L15.5 12.5 Z" fill="${def.c}" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg><em style="background:${def.c}">${def.n}</em>`;
+  el.style.transform = `translate(${def.x0}px,${def.y0}px)`;
+  stage.appendChild(el);
+  const svg = el.querySelector('svg');
+  const a = {def, el, x:def.x0, y:def.y0};
+  a.sleep = ms => new Promise((res, rej) => setTimeout(() => my !== runId ? rej(STALE) : res(), ms / speed));
+  a.say = t => { if (my === runId){ const n = $('#st-' + def.k); if (n) n.textContent = t; } };
+  a.msg = t => { if (my === runId && t) msgBar(def.k, t); };
+  a.point = (t, fx = .5, fy = .5) => {
+    if (!(t instanceof Element)) return t;
+    const r = t.getBoundingClientRect(), s = stage.getBoundingClientRect();
+    return {x:(r.left - s.left + r.width * fx) / S, y:(r.top - s.top + r.height * fy) / S};
+  };
+  a.goto = async (t, fx = .5, fy = .5, dur = 1000) => {
+    const p = a.point(t, fx, fy);
+    const dx = p.x - a.x, dy = p.y - a.y, len = Math.hypot(dx, dy) || 1;
+    const off = (Math.random() * .25 + .1) * len * (Math.random() < .5 ? -1 : 1);
+    const cx = a.x + dx / 2 + (-dy / len) * off, cy = a.y + dy / 2 + (dx / len) * off;
+    const N = 24, kf = [];
+    for (let i = 0; i <= N; i++){
+      const t0 = i / N, e = t0 < .5 ? 2 * t0 * t0 : 1 - 2 * (1 - t0) * (1 - t0), u = 1 - e;
+      kf.push({transform:`translate(${u*u*a.x + 2*u*e*cx + e*e*p.x}px,${u*u*a.y + 2*u*e*cy + e*e*p.y}px)`});
+    }
+    const an = el.animate(kf, {duration: Math.max(250, dur) / speed, easing:'linear', fill:'forwards'});
+    try { await an.finished; } catch(e){}
+    if (my !== runId) throw STALE;
+    a.x = p.x; a.y = p.y;
+    el.style.transform = `translate(${p.x}px,${p.y}px)`;
+    an.cancel();
+  };
+  a.click = async f => {
+    SFX.hit('click', {role:def.k});
+    const r = document.createElement('div');
+    r.className = 'rip'; r.style.cssText = `left:${a.x}px;top:${a.y}px;border-color:${def.c};animation-duration:${.6 / speed}s`;
+    stage.appendChild(r); setTimeout(() => r.remove(), 700 / speed);
+    svg.animate([{transform:'scale(1)'},{transform:'scale(.7)'},{transform:'scale(1)'}], {duration: 220 / speed});
+    await a.sleep(200 * (f || 1));
+  };
+  a.type = async (target, text, cps = 26) => {
+    target.classList.add('caret'); target.textContent = '';
+    let k = 0;
+    for (const ch of text){ target.textContent += ch; if (k++ % 2 === 0) SFX.hit('key'); await a.sleep(1000 / cps); }
+    target.classList.remove('caret');
+  };
+  return a;
+}
+/* „призрак“: изпълнява същите стъпки мигновено, без курсор — за да измерим страницата */
+const ghost = () => ({quiet:true, def:{c:'#999', k:'ghost'}, sleep: async () => {}, say(){}, msg(){}, goto: async () => {}, click: async () => {}, type: async (el, t) => { el.textContent = t; }});
+
+/* ---------- интерпретатор на стъпки ---------- */
+/* Всеки елемент се строи на малки стъпки: празен контейнер -> празни деца -> текст -> подредба -> цвят -> шрифт -> почистване.
+   add -> Builder (код), text -> Copywriter, cls/unraw -> Designer. */
+const add   = (to, html, say, fast) => ({op:'add', to, html, say, fast});
+const text  = (el, t, say, fast)    => ({op:'text', el, t, say, fast});
+const cls   = (el, c, say, fast)    => ({op:'cls', el, c, say, fast});
+const unraw = (el, say, fast)       => ({op:'unraw', el, say, fast});
+const roleOf = o => o.op === 'add' ? 'builder' : o.op === 'text' ? 'copywriter' : 'designer';
+
+async function doOp(a, o){
+  const f = o.fast ? 0.4 : 1, sy = sayOf(o);
+  if (sy) a.say(sy);
+  if (o.op === 'add'){
+    const parent = $(o.to);
+    const isSlot = parent.classList.contains('slot');
+    if (isSlot){ parent.style.setProperty('--c', a.def.c); parent.classList.add('claimed'); }
+    await a.goto(parent, .5, .5, 750 * f);
+    await a.click(f);
+    if (isSlot){ parent.classList.remove('claimed'); parent.classList.add('filled'); parent.innerHTML = ''; }
+    const tpl = document.createElement('template'); tpl.innerHTML = o.html.trim();
+    const node = tpl.content.firstElementChild;
+    node.style.setProperty('--c', a.def.c); node.classList.add('born');
+    parent.appendChild(node);
+    if (!a.quiet) SFX.hit('pop');
+    return a.sleep(250 * f);
+  }
+  const el = $(o.el);
+  if (o.op === 'text'){
+    await a.goto(el, .15, .5, 600 * f);
+    return a.type(el, o.t, o.fast ? 45 : Math.max(26, o.t.length / 2));
+  }
+  if (o.op === 'cls'){
+    await a.goto(el, .5, .5, 600 * f); await a.click(f);
+    o.c.split(' ').forEach(c => el.classList.add(c));
+    return a.sleep(500 * f);
+  }
+  if (o.op === 'unraw'){
+    await a.goto(el, .5, .5, 600 * f); await a.click(f);
+    el.classList.remove('raw'); el.querySelectorAll('.raw').forEach(e => e.classList.remove('raw'));
+    return a.sleep(450 * f);
+  }
+}
+
+const navOps = P => [
+  add('#s-nav', '<div class="nav raw" id="nav"></div>', 'box'),
+  add('#nav', '<span class="logo raw" id="logo"></span>', 'logoSlot'),
+  text('#logo', P.brand, 'typeLogo'),
+  add('#nav', '<ul class="raw" id="menu"></ul>', 'menuList'),
+  ...P.nav.flatMap((t, i) => [
+    add('#menu', `<li class="raw" id="m${i}"></li>`, ['menuItem', i + 1], true),
+    text(`#m${i}`, t, null, true)]),
+  cls('#nav', 'l', 'alignRow'),
+  cls('#logo', 's', 'styleLogo'),
+  unraw('#nav', 'unraw')
+];
+const heroOps = P => [
+  add('#s-hero', '<div class="hero raw" id="hero"></div>', 'box'),
+  add('#hero', '<h1 class="raw" id="h1"></h1>', 'titleSlot'),
+  add('#hero', '<p class="raw" id="hp"></p>', 'subSlot'),
+  add('#hero', '<a class="btn raw" id="btn"></a>', 'btnSlot'),
+  text('#h1', P.hero.title, 'typeTitle'),
+  text('#hp', P.hero.sub, 'typeSub'),
+  text('#btn', P.hero.button, 'typeBtn'),
+  cls('#hero', 'l', 'padding'),
+  cls('#hero', 'bg', 'bg'),
+  cls('#h1', 's', 'styleTitle'),
+  cls('#hp', 's', 'styleSub'),
+  cls('#btn', 's', 'styleBtn'),
+  unraw('#hero', 'unraw')
+];
+function cardOps(i, c){
+  const f = i > 1;                                 // първата карта е бавна и подробна, другите — бързо
+  return [
+    add('#grid', `<div class="card raw" id="c${i}"></div>`, ['card', i], f),
+    add(`#c${i}`, `<div class="em raw" id="e${i}"></div>`, 'iconSlot', f), text(`#e${i}`, c.icon, 'typeIcon', f),
+    add(`#c${i}`, `<b class="raw" id="n${i}"></b>`, 'nameSlot', f),            text(`#n${i}`, c.name, 'typeName', f),
+    add(`#c${i}`, `<span class="pr raw" id="p${i}"></span>`, 'priceSlot', f),  text(`#p${i}`, c.price, 'typePrice', f),
+    cls(`#c${i}`, 'l', 'cardLayout', f),
+    cls(`#c${i}`, 'box s', 'cardStyle', f),
+    unraw(`#c${i}`, 'unraw', f)
+  ];
+}
+const cardsOps = P => [
+  add('#s-cards', '<div class="grid raw" id="grid"></div>', 'grid'),
+  ...cardOps(1, P.cards[0]),
+  cls('#grid', 'l', 'cols'),
+  ...cardOps(2, P.cards[1]),
+  ...cardOps(3, P.cards[2]),
+  unraw('#grid', null, true)
+];
+const footOps = (P, slot = '#s-foot') => [
+  add(slot, '<div class="foot raw" id="foot"></div>', 'box'),
+  add('#foot', '<b class="raw" id="fb"></b>', 'nameSlot'),        text('#fb', P.footer.name, 'typeName'),
+  add('#foot', '<span class="raw" id="fs"></span>', 'addrSlot'),  text('#fs', P.footer.line, 'typeAddr', true),
+  cls('#foot', 'l', 'layout'),
+  cls('#foot', 'bg s', 'footStyle'),
+  unraw('#foot', 'unraw')
+];
+
+/* ----- тип „новини“: заглавна лента, извънредно, водеща новина, топ новини, футър ----- */
+const mastOps = P => [
+  add('#s-mast', '<div class="mast raw" id="mast"></div>', 'box'),
+  add('#mast', '<span class="md raw" id="md"></span>', 'dateSlot'),
+  add('#mast', '<b class="mn raw" id="mn"></b>', 'logoSlot'),
+  add('#mast', '<ul class="msec raw" id="msec"></ul>', 'menuList'),
+  text('#md', P.date, 'typeDate'),
+  text('#mn', P.brand, 'typeLogo'),
+  ...P.sections.flatMap((t, i) => [
+    add('#msec', `<li class="raw" id="ms${i}"></li>`, ['menuItem', i + 1], true),
+    text(`#ms${i}`, t, null, true)]),
+  cls('#mast', 'l', 'mastLayout'),
+  cls('#md', 's', 'styleDate'),
+  cls('#mn', 's', 'styleLogo'),
+  cls('#msec', 'l s', 'styleSections'),
+  unraw('#mast', 'unraw')
+];
+const tickOps = P => [
+  add('#s-tick', '<div class="tick raw" id="tick"></div>', 'box'),
+  add('#tick', '<span class="tlab raw" id="tl"></span>', 'labelSlot'), text('#tl', P.ticker.label, 'typeLabel'),
+  add('#tick', '<span class="ttx raw" id="tt"></span>', 'lineSlot'),   text('#tt', P.ticker.text, 'typeLine', true),
+  cls('#tick', 'l', 'layout'),
+  cls('#tl', 's', 'styleLabel'),
+  cls('#tt', 's', 'styleLine'),
+  unraw('#tick', 'unraw')
+];
+const leadOps = P => [
+  add('#s-lead', '<div class="lead raw" id="lead"></div>', 'box'),
+  add('#lead', '<div class="limg raw" id="li"></div>', 'photoSlot'),
+  add('#lead', '<span class="kick raw" id="lk"></span>', 'kickerSlot'),
+  add('#lead', '<h1 class="raw" id="lh"></h1>', 'titleSlot'),
+  add('#lead', '<p class="raw" id="ld"></p>', 'deckSlot'),
+  add('#lead', '<span class="by raw" id="lb"></span>', 'metaSlot'),
+  text('#li', P.lead.img, 'typePhoto'),
+  text('#lk', P.lead.kicker, 'typeKicker'),
+  text('#lh', P.lead.title, 'typeTitle'),
+  text('#ld', P.lead.deck, 'typeDeck'),
+  text('#lb', P.lead.byline, 'typeMeta'),
+  cls('#lead', 'l', 'leadLayout'),
+  cls('#li', 's', 'stylePhoto'),
+  cls('#lk', 's', 'styleKicker'),
+  cls('#lh', 's', 'styleTitle'),
+  cls('#ld', 's', 'styleDeck'),
+  cls('#lb', 's', 'styleMeta'),
+  unraw('#lead', 'unraw')
+];
+function storyOps(i, s){
+  const f = i > 1;
+  return [
+    add('#nl', `<div class="nrow raw" id="n${i}"></div>`, ['story', i], f),
+    add(`#n${i}`, `<span class="nn raw" id="nn${i}"></span>`, 'numSlot', f), text(`#nn${i}`, String(i), 'typeNum', f),
+    add(`#n${i}`, `<div class="nb raw" id="nb${i}"></div>`, 'bodySlot', f),
+    add(`#nb${i}`, `<b class="raw" id="nt${i}"></b>`, 'titleSlot', f),          text(`#nt${i}`, s.title, 'typeTitle', f),
+    add(`#nb${i}`, `<span class="nm raw" id="nm${i}"></span>`, 'dateSlot', f),  text(`#nm${i}`, s.meta, 'typeDate', f),
+    cls(`#nb${i}`, 'l', 'bodyLayout', f),
+    cls(`#n${i}`, 'l', 'rowLayout', f),
+    cls(`#n${i}`, 's', 'rowStyle', f),
+    unraw(`#n${i}`, 'unraw', f)
+  ];
+}
+const nlistOps = P => [
+  add('#s-news', '<div class="nlist raw" id="nl"></div>', 'list'),
+  ...storyOps(1, P.stories[0]),
+  cls('#nl', 'l', 'listLayout'),
+  ...storyOps(2, P.stories[1]),
+  ...storyOps(3, P.stories[2]),
+  unraw('#nl', null, true)
+];
+const nfootOps = P => footOps(P, '#s-nfoot');
+
+/* ----- тип „блог“: навигация (същата), водеща публикация, списък, абонамент ----- */
+const bpostOps = P => [
+  add('#s-post', '<div class="post raw" id="post"></div>', 'box'),
+  add('#post', '<div class="cover raw" id="cover"></div>', 'coverSlot'),
+  add('#post', '<span class="pill raw" id="pill"></span>', 'tagSlot'),
+  add('#post', '<h1 class="raw" id="ph"></h1>', 'titleSlot'),
+  add('#post', '<p class="raw" id="pm"></p>', 'metaSlot'),
+  text('#cover', P.post.cover, 'typeCover'),
+  text('#pill', P.post.tag, 'typeTag'),
+  text('#ph', P.post.title, 'typeTitle'),
+  text('#pm', P.post.meta, 'typeMeta'),
+  cls('#post', 'l', 'postLayout'),
+  cls('#cover', 's', 'styleCover'),
+  cls('#pill', 's', 'styleTag'),
+  cls('#ph', 's', 'styleTitle'),
+  cls('#pm', 's', 'styleMeta'),
+  unraw('#post', 'unraw')
+];
+function rowOps(i, r){
+  const f = i > 1;
+  return [
+    add('#list', `<div class="row raw" id="r${i}"></div>`, ['row', i], f),
+    add(`#r${i}`, `<div class="th raw" id="th${i}"></div>`, 'thumbSlot', f), text(`#th${i}`, r.icon, 'typeThumb', f),
+    add(`#r${i}`, `<div class="rb raw" id="rb${i}"></div>`, 'bodySlot', f),
+    add(`#rb${i}`, `<b class="raw" id="rt${i}"></b>`, 'titleSlot', f),          text(`#rt${i}`, r.title, 'typeTitle', f),
+    add(`#rb${i}`, `<span class="rm raw" id="rm${i}"></span>`, 'dateSlot', f),  text(`#rm${i}`, r.meta, 'typeDate', f),
+    cls(`#rb${i}`, 'l', 'bodyLayout', f),
+    cls(`#r${i}`, 'l', 'rowLayout', f),
+    cls(`#r${i}`, 'box s', 'rowStyle', f),
+    unraw(`#r${i}`, 'unraw', f)
+  ];
+}
+const blistOps = P => [
+  add('#s-list', '<div class="list raw" id="list"></div>', 'list'),
+  ...rowOps(1, P.rows[0]),
+  cls('#list', 'l', 'listLayout'),
+  ...rowOps(2, P.rows[1]),
+  ...rowOps(3, P.rows[2]),
+  unraw('#list', null, true)
+];
+const bfootOps = P => [
+  add('#s-foot', '<div class="bfoot raw" id="bfoot"></div>', 'box'),
+  add('#bfoot', '<b class="raw" id="fb"></b>', 'promptSlot'),   text('#fb', P.footer.text, 'typePrompt'),
+  add('#bfoot', '<a class="sb raw" id="fbtn"></a>', 'btnSlot'), text('#fbtn', P.footer.button, 'typeBtn', true),
+  cls('#bfoot', 'l', 'layout'),
+  cls('#bfoot', 'bg s', 'footStyle'),
+  unraw('#bfoot', 'unraw')
+];
+
+/* ---------- работници: всяка роля изпълнява стъпките от своя тип ---------- */
+function mkWorker(a){
+  const q = []; let wake = null, stop = false;
+  (async () => {
+    while (!stop){
+      if (!q.length){ await new Promise(r => wake = r); continue; }
+      const job = q.shift();
+      try { await doOp(a, job.op); job.res(); } catch(e){ job.rej(e); }
+    }
+  })();
+  return {
+    push(op){ return new Promise((res, rej) => { q.push({op, res, rej}); if (wake){ const w = wake; wake = null; w(); } }); },
+    stop(){ stop = true; if (wake){ const w = wake; wake = null; w(); } }
+  };
+}
+let activeWorkers = null;
+const stopWorkers = w => { if (w) Object.values(w).forEach(x => x.stop()); };
+
+/* ---------- измервания (реален контраст и дали съдържанието се побира) ---------- */
+const parseCol = s => {
+  const m = /^(rgba?|color)\(([^)]+)\)/.exec(s || ''); if (!m) return null;
+  const n = m[2].replace('srgb', '').replace('/', ' ').split(/[\s,]+/).filter(Boolean).map(parseFloat);
+  if (n.length < 3 || n.some(isNaN)) return null;
+  const k = m[1] === 'color' ? 255 : 1;
+  return {c:[n[0] * k, n[1] * k, n[2] * k], a: n.length > 3 ? n[3] : 1};
+};
+const relL = c => { const v = c.map(x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+const ratio = (f, b) => { const x = relL(f), y = relL(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const mixC = (c, t, k) => c.map((v, i) => v + (t[i] - v) * k);
+const rgbStr = c => `rgb(${c.map(v => Math.round(v)).join(',')})`;
+const rgbHex = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+function effBg(el){
+  for (let n = el; n; n = n.parentElement){
+    const p = parseCol(getComputedStyle(n).backgroundColor);
+    if (p && p.a > .5) return {c:p.c, el:n};
+    if (n === page) break;
+  }
+  return {c:[255, 255, 255], el:page};
+}
+function measure(sel, min){
+  const el = $(sel); if (!el) return null;
+  const f = parseCol(getComputedStyle(el).color); if (!f) return null;
+  const b = effBg(el);
+  return {el, id:sel, fg:f.c, bg:b.c, bgEl:b.el, r:ratio(f.c, b.c), min};
+}
+function fixContrast(m){
+  const light = relL(m.fg) > .6, sel = el => el.id ? '#' + el.id : '#page';
+  for (let k = .05; k <= .95; k += .05){
+    if (light){                                   // светъл текст -> потъмняваме фона
+      const c = mixC(m.bg, [0, 0, 0], k);
+      if (ratio(m.fg, c) >= m.min){ m.bgEl.style.backgroundColor = rgbStr(c); return {r:ratio(m.fg, c), override:{id:sel(m.bgEl), prop:'backgroundColor', value:rgbStr(c)}}; }
+    } else {                                      // тъмен текст -> потъмняваме текста (или го изсветляваме върху тъмен фон)
+      const c = mixC(m.fg, relL(m.bg) > .4 ? [0, 0, 0] : [255, 255, 255], k);
+      if (ratio(c, m.bg) >= m.min){ m.el.style.color = rgbStr(c); return {r:ratio(c, m.bg), override:{id:sel(m.el), prop:'color', value:rgbStr(c)}}; }
+    }
+  }
+  return {r:m.r, override:null};
+}
+const CHECKS = [['#h1','headline',3],['#hp','subtitle',4.5],['#btn','button',4.5],['#logo','logo',3],['#m0','menu 1',4.5],['#m1','menu 2',4.5],['#m2','menu 3',4.5],
+  ['#n1','name 1',4.5],['#p1','price 1',4.5],['#n2','name 2',4.5],['#p2','price 2',4.5],['#n3','name 3',4.5],['#p3','price 3',4.5],['#fb','footer name',4.5],['#fs','footer text',4.5]];
+const SLOTS = [['#s-nav','navigation'],['#s-hero','hero section'],['#s-cards','products'],['#s-foot','footer']];
+function takeMeasurements(){
+  const out = [];
+  for (const [id, label, min] of TYPE.checks){
+    const m = measure(id, min); if (!m) continue;
+    out.push({id, label, kind:'contrast', value:+m.r.toFixed(2), min, pass:m.r >= min, fg:rgbHex(m.fg), bg:rgbHex(m.bg)});
+  }
+  for (const [id, label] of TYPE.checks.map(c => [c[0], c[1]])){
+    const el = $(id);
+    if (el && el.textContent.trim().endsWith('…')) out.push({id, label, kind:'truncated', value:1, min:0, pass:false});
+  }
+  for (const [id, label] of TYPE.slots.map(s => [s[0], s[2]])){
+    const s = $(id); if (!s) continue;
+    const over = Math.max(0, Math.round(s.scrollHeight - s.clientHeight));
+    out.push({id, label, kind:'overflow', value:over, min:0, pass:over <= 1});
+  }
+  return out;
+}
+function badge(el, m){
+  const b = document.createElement('div'), rr = el.getBoundingClientRect(), s = stage.getBoundingClientRect();
+  SFX.hit(m.pass ? 'scan' : 'bad', {i:SFX.scanI++});
+  b.className = 'badge ' + (m.pass ? 'ok' : 'bad');
+  if (m.kind === 'truncated'){
+    b.style.left = ((rr.left - s.left + rr.width / 2) / S) + 'px'; b.style.top = ((rr.top - s.top) / S) + 'px';
+    b.textContent = 'cut off ✗';
+  } else if (m.kind === 'overflow'){
+    b.style.left = ((rr.right - s.left - 40) / S) + 'px'; b.style.top = ((rr.top - s.top + 16) / S) + 'px';
+    b.textContent = m.pass ? 'fits ✓' : `+${m.value}px ✗`;
+  } else if (/^#rm\d/.test(m.id)){                   // датите в блога: значката отстрани, за да не закрива заглавието
+    b.style.left = ((rr.right - s.left + 6) / S) + 'px'; b.style.top = ((rr.top - s.top + rr.height / 2) / S) + 'px'; b.style.transform = 'translate(0,-50%)';
+    b.textContent = `${Number(m.value).toFixed(1)}:1 ${m.pass ? '✓' : '✗'}`;
+  } else {
+    b.style.left = ((rr.left - s.left + rr.width / 2) / S) + 'px'; b.style.top = ((rr.top - s.top) / S) + 'px';
+    b.textContent = `${Number(m.value).toFixed(1)}:1 ${m.pass ? '✓' : '✗'}`;
+  }
+  stage.appendChild(b); return b;
+}
+
+/* ---------- QA без записани данни: измерва и поправя с код (за обикновените планове) ---------- */
+async function liveAudit(a){
+  a.say(tr('measuring')); SFX.scanI = 0;
+  const ms = takeMeasurements().filter(m => m.kind === 'contrast');
+  const shown = [];
+  for (const m of ms){ const el = $(m.id); if (el) shown.push([m, badge(el, m)]); await a.sleep(70); }
+  await a.sleep(500);
+  shown.filter(([m]) => m.pass).forEach(([, b]) => b.remove());
+  const bad = shown.filter(([m]) => !m.pass);
+  for (const [m, b] of bad){
+    a.say(tr('fixing'));
+    const el = $(m.id);
+    await a.goto(el, .5, .5, 700); await a.click(1);
+    const fresh = measure(m.id, m.min);
+    const nr = fresh && fresh.r < fresh.min ? fixContrast(fresh).r : (fresh ? fresh.r : m.value);
+    b.remove(); const nb = badge(el, {...m, value:nr, pass:nr >= m.min});
+    await a.sleep(650); nb.remove();
+  }
+  a.say(bad.length ? tr('fixedN', bad.length) : tr('allOk'));
+  await a.sleep(500);
+}
+
+/* ---------- възпроизвеждане на записана хронология ---------- */
+async function qaReplay(ag, evs){
+  const qa = ag.qa; let badges = [];
+  const clear = () => { badges.forEach(b => b.remove()); badges = []; };
+  for (const e of evs){
+    if (e.type === 'measure'){
+      clear(); qa.say(tr('measuring')); SFX.scanI = 0;
+      await qa.goto({x:200, y:300}, 0, 0, 900);
+      const shown = [];
+      for (const m of e.measurements){ const el = $(m.id); if (el) shown.push([m, badge(el, m)]); await qa.sleep(60); }
+      await qa.sleep(600);
+      shown.filter(([m]) => m.pass).forEach(([, b]) => b.remove());
+      badges = shown.filter(([m]) => !m.pass).map(([, b]) => b);
+    } else if (e.type === 'review'){
+      qa.say(e.verdict === 'pass' ? tr('passed') : tr('rejected'));
+      SFX.hit(e.verdict === 'pass' ? 'pass' : 'reject');
+      qa.msg((e.verdict === 'pass' ? '✓ ' : '✗ ') + (e.message || ''));
+      await qa.sleep(2200);
+    } else if (e.type === 'revise'){
+      const a = ag[e.agent]; if (!a) continue;
+      a.say(tr('fixing')); a.msg(e.message);
+      if (e.theme){ await a.goto($(TYPE.anchors.theme), .85, .2, 800); await a.click(1); SFX.hit('whoosh', {k:1.2}); setTheme(e.theme); await a.sleep(1400); }
+      for (const c of (e.changes || [])){ const el = $(c.id); if (!el) continue; await a.goto(el, .15, .5, 600); await a.type(el, c.text, 40); }
+      await a.sleep(600);
+    } else if (e.type === 'autofix'){
+      qa.say(tr('autofix')); qa.msg(tr('autofixMsg'));
+      for (const o of (e.overrides || [])){ const el = $(o.id); if (!el) continue; await qa.goto(el, .5, .5, 600); await qa.click(1); el.style[o.prop] = o.value; await qa.sleep(450); }
+    }
+  }
+  clear();
+}
+
+/* ---------- хук и финал: текстовете се изграждат от самия запис, за да са верни ---------- */
+const rs = (ms, my) => new Promise((res, rej) => setTimeout(() => my !== runId ? rej(STALE) : res(), ms));   // в реално време, не зависи от скоростта
+function hookTexts(trace, evs){
+  const m = trace.meta || {}, h = m.hook || {}, en = LANG === 'en';
+  const n = new Set(evs.filter(e => e.engine === 'llm').map(e => e.agent)).size || 3;
+  const rejects = evs.filter(e => e.type === 'review' && e.verdict === 'reject').length;
+  const auto = evs.some(e => e.type === 'autofix');
+  const left = ((evs.find(e => e.type === 'done') || {}).unresolved || []).length;
+  const intro = h.intro || [
+    en ? `I gave ${n} AI agents one task` : `Дадох на ${n} AI агента една задача`,
+    en ? 'You’re watching a visualization of their real run — sped up' : 'Гледаш визуализация на реалния им работен процес — ускорена'];
+  const task = m.topic ? (en ? `Task: “${m.topic}”` : `Задача: „${m.topic}“`) : '';
+  const qa = rejects === 0
+    ? (en ? 'QA approved it on the first pass.' : 'QA го одобри от първия път.')
+    : (en ? `QA sent the work back ${rejects}×, then approved it${auto ? ' (last fix done by code)' : ''}.`
+          : `QA върна работата ${rejects} път(и), после я одобри${auto ? ' (последната поправка е от код)' : ''}.`);
+  const outro = h.outro || [
+    en ? 'Which AI role should I show next?' : 'Коя роля на AI да покажа следваща?',
+    en ? 'Designer · Developer · Marketer · Manager — comment below' : 'Дизайнер · Програмист · Маркетолог · Мениджър — пиши в коментарите'];
+  return {intro, task, qa: qa + (left ? (en ? ' Some issues remained.' : ' Останаха проблеми.') : ''), outro};
+}
+async function showHook(kind, h, p, tag, ms, my){
+  const el = document.createElement('div'); el.id = 'hook'; if (kind === 'out') el.classList.add('out');
+  const a = document.createElement('h2'); a.textContent = h; el.appendChild(a);
+  if (p){ const b = document.createElement('p'); b.textContent = p; el.appendChild(b); }
+  if (tag){ const c = document.createElement('div'); c.className = 'tag'; c.textContent = tag; el.appendChild(c); }
+  stage.appendChild(el); void el.offsetWidth; el.classList.add('show');
+  SFX.hit(kind === 'out' ? 'chime' : 'hit');
+  await rs(ms, my); el.classList.remove('show'); await rs(450, my); el.remove();
+}
+
+async function play(trace, opts){
+  const my = ++runId; stopWorkers(activeWorkers); SFX.reset();
+  const evs = Array.isArray(trace.events) ? trace.events : [];
+  const bev = evs.find(e => e.type === 'build');
+  if (!bev){ stat(ui('noBuild')); return; }
+  LANG = trace.meta && trace.meta.lang === 'en' ? 'en' : 'bg';
+  const P = sanitize(bev.plan, !(trace.meta && trace.meta.strict));
+  currentPlan = P; lastPlayed = trace; currentTrace = trace.format ? trace : null; showTraceBar();
+  resetStage(P);
+  const ag = {}; ROLES.forEach(r => ag[r.k] = mkAgent(r, my));
+  const W = {builder:mkWorker(ag.builder), copywriter:mkWorker(ag.copywriter), designer:mkWorker(ag.designer)};
+  activeWorkers = W;
+  const chain = async ops => { for (const o of ops) await W[roleOf(o)].push(o); };
+  const sl = ms => ag.builder.sleep(ms);
+  const hookOn = trace.format === 'swarm-trace/1' && !(trace.meta && trace.meta.hook === false) && $('#hookcb').checked && Q.get('hook') !== '0';
+  const HT = hookOn ? hookTexts(trace, evs) : null;
+  try {
+    if (hookOn) await showHook('in', HT.intro[0], HT.intro[1], HT.task, 3300, my);
+    await Promise.all(TYPE.chains(P).map((ops, i) => i ? sl(700 * i).then(() => chain(ops)) : chain(ops)));
+    const d = ag.designer;
+    d.say(tr('palette')); await d.goto($(TYPE.anchors.theme), .85, .2, 900); await d.click(1); SFX.hit('whoosh', {k:1}); page.classList.add('t1'); await d.sleep(900);
+    d.say(tr('shape'));   await d.goto($(TYPE.anchors.shape), .5, .2, 900);    await d.click(1); SFX.hit('whoosh', {k:1.3}); page.classList.add('t2'); await d.sleep(900);
+    d.say(tr('font'));    await d.goto($(TYPE.anchors.font), .6, .5, 900);    await d.click(1); SFX.hit('whoosh', {k:1.6}); page.classList.add('t3'); await d.sleep(1100);
+    ['builder', 'copywriter', 'designer'].forEach(k => ag[k].say(tr('done')));
+    for (const k of ['copywriter', 'designer']){
+      const c = evs.find(e => e.type === 'call' && e.agent === k);
+      if (c && c.message){ ag[k].msg(c.message); await sl(1500); }
+    }
+    if (evs.some(e => e.type === 'measure')) await qaReplay(ag, evs.filter(e => ['measure', 'review', 'revise', 'autofix'].includes(e.type)));
+    else await liveAudit(ag.qa);
+    ROLES.forEach(r => ag[r.k].say(tr('done')));
+    if (hookOn) await showHook('out', HT.outro[0], HT.qa, HT.outro[1], 4300, my); else await sl(1500);
+  } catch(e){
+    if (e !== STALE) console.error(e);
+    return;
+  } finally { stopWorkers(W); }
+  if (my === runId && $('#loop').checked){ await new Promise(r => setTimeout(r, 2500 / speed)); if (my === runId) play(trace); }
+}
+/* обикновен план без записан тест: строи се и накрая QA мери с код */
+function run(plan){
+  const P = sanitize(plan || currentPlan);
+  return play({meta:{lang:(typeof Q !== 'undefined' && Q.get('lang')) || LANG || 'bg', strict:true}, events:[{type:'build', plan:P}]});
+}
+
+/* ---------- реални агенти (само в артефакта: страницата вика Claude) ---------- */
+let sampleFn = null, busy = false, saved = [], ctl = null;
+const stat = t => { $('#aistat').textContent = t || ''; };
+try { saved = JSON.parse(localStorage.getItem('swarm-plans') || '[]').filter(x => x && (x.plan || x.trace)); } catch(e){ saved = []; }
+const persist = () => { try { localStorage.setItem('swarm-plans', JSON.stringify(saved.slice(-10))); } catch(e){} };
+function refreshPlans(sel){
+  const s = $('#plans');
+  s.innerHTML = `<option value="-1">${ui('defCafe')}</option><option value="-2">${ui('defBlog')}</option><option value="-3">${ui('defNews')}</option>` + saved.map((x, i) =>
+    `<option value="${i}">${x.trace ? '🎬 ' : ''}${String(x.topic).replace(/[<>&"]/g, '')}</option>`).join('');
+  if (sel !== undefined) s.value = String(sel);
+}
+refreshPlans();
+
+const LANGS = {en:'English', bg:'Bulgarian'};
+const SCHEMA_LANDING = L => `{"message":"<one sentence, max 80 chars, in ${L}, telling teammates what you wrote>",
+ "url":"domain in latin letters, max 22 chars, e.g. goldencrust.bakery",
+ "brand":"logo text, max 14 chars, may end with one emoji",
+ "nav":["exactly 3 menu words, max 10 chars each"],
+ "hero":{"title":"headline, max 36 chars","sub":"subtitle, max 80 chars","button":"button text, max 18 chars"},
+ "cards":[{"icon":"one emoji","name":"max 12 chars","price":"max 9 chars, e.g. 4.50 €"}],
+ "footer":{"name":"max 20 chars","line":"address and opening hours, max 44 chars"}}`;
+const SCHEMA_BLOG = L => `{"message":"<one sentence, max 80 chars, in ${L}, telling teammates what you wrote>",
+ "url":"domain in latin letters, max 22 chars, e.g. wanderpages.blog",
+ "brand":"blog name, max 14 chars, may end with one emoji",
+ "nav":["exactly 3 menu words, max 10 chars each"],
+ "post":{"cover":"one emoji illustrating the featured post","tag":"category, max 12 chars","title":"featured post title, max 44 chars","meta":"byline, max 36 chars, e.g. By Mia · 6 min read"},
+ "rows":[{"icon":"one emoji","title":"post title, max 34 chars","meta":"date and category, max 24 chars, e.g. Nov 12 · Tips"}],
+ "footer":{"text":"newsletter invitation, max 24 chars","button":"button text, max 14 chars"}}`;
+const SCHEMA_NEWS = L => `{"message":"<one sentence, max 80 chars, in ${L}, telling teammates what you wrote>",
+ "url":"domain in latin letters, max 22 chars, e.g. cityledger.news",
+ "brand":"newspaper name, max 16 chars",
+ "date":"date line, max 22 chars, e.g. Wed, 11 Nov",
+ "sections":["exactly 4 section words, max 8 chars each"],
+ "ticker":{"label":"max 10 chars, e.g. Breaking","text":"breaking headline, max 40 chars"},
+ "lead":{"img":"one emoji standing in for the photo","kicker":"category, max 14 chars","title":"headline, max 52 chars","deck":"one-sentence summary, max 96 chars","byline":"author and time, max 34 chars"},
+ "stories":[{"title":"headline, max 40 chars","meta":"time and section, max 24 chars, e.g. 2h ago · Sport"}],
+ "footer":{"name":"max 22 chars","line":"copyright line, max 46 chars"}}`;
+const SCHEMA = L => TYPE.schema(L);
+const copyPrompt = (topic, L) => `You are the Copywriter in a small website team. Write the copy for ${TYPE.what} about: "${topic}".
+${TYPE.copyNote || ''}Write all visible text in ${L}. Reply with ONLY one JSON object in this shape ("${TYPE.listKey}" has exactly 3 items):
+${SCHEMA(L)}`;
+const designPrompt = (topic, L) => `You are the Designer in a small website team. Choose the look for ${TYPE.what} about: "${topic}".
+${TYPE.designHint}
+Reply with ONLY one JSON object: {"message":"<one sentence, max 80 chars, in ${L}, saying what look you chose>","theme":{"accent":"#rrggbb","bg":"#rrggbb light page background","ink":"#rrggbb dark text color"}}`;
+const qaPrompt = (plan, ms, round, L) => `You are QA in a small website team. Below are MEASUREMENTS of the built page: contrast ratios (WCAG AA needs 4.5 for normal text and 3 for large text), for each section how many px its content overflows its box, and rows with kind "truncated" for texts that were cut off because they were too long.
+Judge ONLY from these numbers. Reject if any row has pass=false, otherwise pass.
+Reply with ONLY one JSON object:
+{"verdict":"pass"|"reject","message":"<one sentence, max 90 chars, in ${L}, addressed to the team>","issues":[{"id":"<id from the rows>","problem":"<max 60 chars, in ${L}>","owner":"designer"|"copywriter"}]}
+Contrast problems belong to the designer; overflow and truncated problems to the copywriter. "issues" is [] on pass.
+Round: ${round}
+Theme: ${JSON.stringify(plan.theme)}
+Rows: ${JSON.stringify(ms.map(m => ({id:m.id, label:m.label, kind:m.kind, value:m.value, min:m.min, pass:m.pass})))}`;
+const designFixPrompt = (topic, plan, fails, L) => `You are the Designer. QA rejected the colors of the site about "${topic}".
+Current theme: ${JSON.stringify(plan.theme)}
+Failing contrast checks: ${JSON.stringify(fails.map(m => ({label:m.label, ratio:m.value, needed:m.min, text:m.fg, background:m.bg})))}
+${TYPE.accentUse}
+Change the theme as little as needed so every check passes, keeping the same mood.
+Reply with ONLY: {"message":"<one sentence, max 80 chars, in ${L}>","theme":{"accent":"#rrggbb","bg":"#rrggbb","ink":"#rrggbb"}}`;
+const copyFixPrompt = (topic, plan, fails, L) => `You are the Copywriter. QA found that some text is too long on the site about "${topic}".
+Current copy: ${JSON.stringify(copyOf(plan))}
+Problems: ${JSON.stringify(fails.map(m => ({where:m.label, problem:m.kind === 'overflow' ? `content overflows its box by ${m.value}px` : 'text was cut off because it is too long'})))}
+Shorten the copy only where there is a problem (${TYPE.fixWhere}). Keep everything else identical. Write in ${L}.
+Reply with ONLY the full JSON object, in this shape:
+${SCHEMA(L)}`;
+
+const ERR_CODES = ['not_granted', 'sampling_disabled', 'rate_limited', 'invalid_json', 'session_expired', 'refused', 'cancelled'];
+const errText = e => ui(e && ERR_CODES.includes(e.code) ? e.code : 'generic');
+
+/* ---------- типове сайтове: всичко специфично за даден макет е на едно място ---------- */
+const TYPES = {
+  landing: {
+    id:'landing', def:DEFAULT_PLAN, sanitize:sanitizeLanding, listKey:'cards', schema:SCHEMA_LANDING, what:'a short one-page site',
+    slots:[['#s-nav','slot_nav','navigation'],['#s-hero','slot_hero','hero section'],['#s-cards','slot_cards','products'],['#s-foot','slot_foot','footer']],
+    chains:P => [navOps(P), heroOps(P), cardsOps(P), footOps(P)],
+    checks:CHECKS, anchors:{theme:'#hero', shape:'#c1', font:'#h1'},
+    designHint:'The page has: a hero banner filled with the accent color (white text on it), white product cards that show prices in the accent color, a page background, and a footer filled with the ink color.',
+    accentUse:'The accent color is used as the hero background with white text, and as small price text on white cards. ink is the text color on the page background bg, and the footer fill.',
+    fixWhere:'hero: title/sub/button, products: names/prices, footer: name/line, navigation: brand/menu'
+  },
+  news: {
+    id:'news', def:DEFAULT_NEWS, sanitize:sanitizeNews, listKey:'stories', schema:SCHEMA_NEWS, what:'a news site front page',
+    copyNote:'Every story must be invented and harmless: no real people, real organizations or real current events.\n',
+    slots:[['#s-mast','slot_mast','masthead'],['#s-tick','slot_tick','breaking ticker'],['#s-lead','slot_lead','lead story'],['#s-news','slot_news','top stories'],['#s-nfoot','slot_foot','footer']],
+    chains:P => [mastOps(P), tickOps(P), leadOps(P), nlistOps(P), nfootOps(P)],
+    checks:[['#mn','newspaper name',3],['#md','date line',4.5],['#ms0','section 1',4.5],['#ms1','section 2',4.5],['#ms2','section 3',4.5],['#ms3','section 4',4.5],
+      ['#tl','breaking label',4.5],['#tt','ticker text',4.5],['#lk','kicker',4.5],['#lh','lead headline',3],['#ld','lead summary',4.5],['#lb','lead byline',4.5],
+      ['#nn1','number 1',3],['#nt1','story 1',4.5],['#nm1','time 1',4.5],['#nn2','number 2',3],['#nt2','story 2',4.5],['#nm2','time 2',4.5],['#nn3','number 3',3],['#nt3','story 3',4.5],['#nm3','time 3',4.5],
+      ['#fb','footer name',4.5],['#fs','footer text',4.5]],
+    anchors:{theme:'#li', shape:'#n1', font:'#lh'},
+    designHint:'The page has: a breaking-news label filled with the accent color (white text on it), kicker words and large story numbers written in the accent color directly on the page background, a paper-like page background with dark ink text, and a footer filled with the ink color.',
+    accentUse:'The accent color is used as the breaking label background with white text, and as text color for the kicker and the story numbers on the page background bg. So it must be dark enough for both. ink is the text color on bg, and the footer fill.',
+    fixWhere:'masthead: name/date/sections, ticker: label/text, lead story: kicker/headline/summary/byline, top stories: headlines/times, footer: name/line'
+  },
+  blog: {
+    id:'blog', def:DEFAULT_BLOG, sanitize:sanitizeBlog, listKey:'rows', schema:SCHEMA_BLOG, what:'a blog home page',
+    slots:[['#s-nav','slot_nav','navigation'],['#s-post','slot_post','featured post'],['#s-list','slot_list','latest posts'],['#s-foot','slot_foot','footer']],
+    chains:P => [navOps(P), bpostOps(P), blistOps(P), bfootOps(P)],
+    checks:[['#logo','logo',3],['#m0','menu 1',4.5],['#m1','menu 2',4.5],['#m2','menu 3',4.5],['#pill','category tag',4.5],['#ph','post title',3],['#pm','byline',4.5],
+      ['#rt1','post 1',4.5],['#rm1','date 1',4.5],['#rt2','post 2',4.5],['#rm2','date 2',4.5],['#rt3','post 3',4.5],['#rm3','date 3',4.5],['#fb','footer text',4.5],['#fbtn','subscribe button',4.5]],
+    anchors:{theme:'#cover', shape:'#r1', font:'#ph'},
+    designHint:'The page has: a cover banner of the featured post filled with the accent color, a small category tag with white text on the accent color, a page background, white post rows whose date line is written in the accent color, and a footer strip filled with the ink color that holds a subscribe button filled with the accent color (white text on it).',
+    accentUse:'The accent color is used as the cover banner background, as the tag and subscribe-button background with white text, and as small date text on white post rows. ink is the text color on the page background bg, and the footer fill.',
+    fixWhere:'featured post: tag/title/byline, latest posts: titles/dates, footer: text/button, navigation: brand/menu'
+  }
+};
+TYPE = TYPES.landing;
+
+async function buildGhost(plan){
+  resetStage(plan);
+  const g = ghost();
+  for (const ops of TYPE.chains(plan)) for (const o of ops) await doOp(g, o);
+  page.classList.add('notrans', 't1', 't2', 't3');
+  try { await document.fonts.ready; } catch(e){}
+  await new Promise(r => setTimeout(r, 350));
+}
+const live = (role, t) => { const n = $('#st-' + role); if (n) n.textContent = t; };
+
+async function realRun(){
+  if (!sampleFn || busy) return;
+  const topic = ($('#topic').value || '').trim().slice(0, 80); if (!topic) return;
+  const lang = $('#lang').value === 'bg' ? 'bg' : 'en', L = LANGS[lang];
+  const typeId = TYPES[$('#stype').value] ? $('#stype').value : 'landing';
+  busy = true; ctl = new AbortController(); $('#gen').disabled = true; $('#stop').style.display = ''; stat('');
+  const rec = {format:'swarm-trace/1', meta:{topic, lang, type:typeId, recordedAt:new Date().toISOString(),
+    note:'Real run: Copywriter, Designer and QA are separate Claude calls; Builder and the measurements are code.'}, events:[]};
+  LANG = lang; runId++; stopWorkers(activeWorkers); resetStage(TYPES[typeId].def);
+  const call = async (role, prompt, tier) => {
+    live(role, tr('thinking'));
+    const r = await sampleFn.json(prompt, {modelTier:tier || 'default', cache:false, signal:ctl.signal});
+    live(role, tr('done')); return r && typeof r === 'object' ? r : {};
+  };
+  const msgOf = r => clip(r && r.message, 100, '');
+  try {
+    stat(ui('s_cw'));
+    const [cw, ds] = await Promise.all([call('copywriter', copyPrompt(topic, L)), call('designer', designPrompt(topic, L))]);
+    rec.events.push({agent:'copywriter', engine:'llm', type:'call', prompt:copyPrompt(topic, L), response:cw, message:msgOf(cw)});
+    rec.events.push({agent:'designer', engine:'llm', type:'call', prompt:designPrompt(topic, L), response:ds, message:msgOf(ds)});
+    let plan = sanitize({...cw, type:typeId, theme:ds.theme}, true);
+    rec.events.push({agent:'builder', engine:'code', type:'build', plan});
+    let round = 1, unresolved = [];
+    for (;;){
+      stat(ui('s_build', round));
+      live('builder', tr('measuring')); await buildGhost(plan);
+      const ms = takeMeasurements();
+      rec.events.push({agent:'qa', engine:'code', type:'measure', round, measurements:ms});
+      const fails = ms.filter(m => !m.pass);
+      stat(ui('s_qa', round));
+      const qp = qaPrompt(plan, ms, round, L);
+      const qr = await call('qa', qp, 'quick');
+      rec.events.push({agent:'qa', engine:'llm', type:'review', round, prompt:qp, response:qr,
+        verdict:qr.verdict === 'reject' ? 'reject' : 'pass', message:msgOf(qr),
+        issues:(Array.isArray(qr.issues) ? qr.issues : []).slice(0, 6).map(i => ({id:clip(i && i.id, 20, ''), problem:clip(i && i.problem, 80, ''), owner:i && i.owner === 'copywriter' ? 'copywriter' : 'designer'}))});
+      if (!fails.length) break;
+      if (round >= 3){                                    // стига с молбите — поправя код и го казва честно
+        const overrides = [];
+        for (const m of fails.filter(x => x.kind === 'contrast')){
+          const fm = measure(m.id, m.min); if (!fm) continue;
+          const fx = fixContrast(fm); if (fx.override) overrides.push(fx.override);
+        }
+        rec.events.push({agent:'qa', engine:'code', type:'autofix', overrides});
+        const fin = takeMeasurements();
+        rec.events.push({agent:'qa', engine:'code', type:'measure', round:'final', measurements:fin});
+        unresolved = fin.filter(m => !m.pass).map(m => m.id);
+        break;
+      }
+      stat(ui('s_back', round));
+      const cf = fails.filter(m => m.kind === 'contrast'), of = fails.filter(m => m.kind !== 'contrast');
+      const jobs = [];
+      if (cf.length){ const p = designFixPrompt(topic, plan, cf, L); jobs.push(call('designer', p).then(r => ({role:'designer', r, p}))); }
+      if (of.length){ const p = copyFixPrompt(topic, plan, of, L); jobs.push(call('copywriter', p).then(r => ({role:'copywriter', r, p}))); }
+      let theme = plan.theme, copy = copyOf(plan);
+      for (const {role, r, p} of await Promise.all(jobs)){
+        if (role === 'designer'){
+          theme = sanitize({...copyOf(plan), theme:r.theme}, true).theme;
+          rec.events.push({agent:'designer', engine:'llm', type:'revise', round, prompt:p, response:r, message:msgOf(r), theme});
+        } else {
+          const np = sanitize({...r, type:plan.type, url:plan.url, theme:plan.theme}, true);
+          copy = copyOf(np);
+          rec.events.push({agent:'copywriter', engine:'llm', type:'revise', round, prompt:p, response:r, message:msgOf(r), changes:diffCopy(plan, np)});
+        }
+      }
+      plan = sanitize({...copy, theme}, true);
+      rec.events.push({agent:'builder', engine:'code', type:'apply', plan});
+      round++;
+    }
+    rec.events.push({type:'done', plan, unresolved});
+    saved.push({topic, trace:rec}); persist(); refreshPlans(saved.length - 1);
+    stat(''); busy = false; play(rec);
+  } catch(e){
+    stat(errText(e));
+    if (e && (e.code === 'not_declared' || e.code === 'sampling_disabled' || e.code === 'capability_disabled')) $('#ai').style.display = 'none';
+  } finally { busy = false; $('#gen').disabled = false; $('#stop').style.display = 'none'; }
+}
+
+/* ---------- панел, файлове, мащаб ---------- */
+function showTraceBar(){
+  const tb = $('#tracebar');
+  if (!currentTrace){ tb.style.display = 'none'; return; }
+  tb.style.display = 'flex'; $('#tracebox').value = JSON.stringify(currentTrace, null, 2);
+}
+$('#gen').onclick = realRun;
+$('#stype').onchange = e => {                      // подсказваме примерна тема, ако полето още е със стандартната
+  const d = {landing:'a local bakery', blog:'a travel blog about the mountains', news:'a city news site'}, t = $('#topic');
+  if (Object.values(d).includes(t.value)) t.value = d[e.target.value] || t.value;
+};
+$('#stop').onclick = () => { if (ctl) ctl.abort(); };
+$('#topic').addEventListener('keydown', e => { if (e.key === 'Enter') realRun(); });
+$('#copytrace').onclick = async () => {
+  const box = $('#tracebox');
+  try { await navigator.clipboard.writeText(box.value); stat(ui('copied')); }
+  catch(e){ box.closest('details').open = true; box.focus(); box.select(); stat(ui('copyFail')); }
+};
+$('#plans').onchange = e => {
+  const i = parseInt(e.target.value, 10), x = saved[i];
+  if (i >= 0 && x) { x.trace ? play(x.trace) : run(x.plan); } else run(i === -3 ? DEFAULT_NEWS : i === -2 ? DEFAULT_BLOG : DEFAULT_PLAN);
+};
+$('#loadplan').onclick = () => $('#planfile').click();
+$('#planfile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const obj = JSON.parse(await f.text()), name = f.name.replace(/\.json$/i, '');
+    if (obj && obj.format === 'swarm-trace/1' && Array.isArray(obj.events)){
+      saved.push({topic:name, trace:obj}); persist(); refreshPlans(saved.length - 1); stat(''); play(obj);
+    } else {
+      const plan = sanitize(obj && obj.plan ? obj.plan : obj);
+      saved.push({topic:name, plan}); persist(); refreshPlans(saved.length - 1); stat(''); run(plan);
+    }
+  } catch(err){ stat(ui('badFile')); }
+};
+$('#saveplan').onclick = () => {
+  const a = document.createElement('a'), data = currentTrace || currentPlan;
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:'application/json'}));
+  a.download = currentTrace ? 'trace.json' : 'plan.json'; document.body.appendChild(a); a.click(); a.remove();
+};
+function fit(){
+  const ui = $('#ui'), hidden = ui.style.display === 'none';
+  const availH = innerHeight - 16 - (hidden ? 0 : ui.offsetHeight + 10);
+  S = Math.min((innerWidth - 16) / 360, availH / 640);
+  stage.style.transform = `scale(${S})`;
+  const w = $('#wrap'); w.style.width = 360 * S + 'px'; w.style.height = 640 * S + 'px';
+}
+const toggleUI = () => { const ui = $('#ui'); ui.style.display = ui.style.display === 'none' ? 'flex' : 'none'; fit(); };
+addEventListener('resize', fit);
+$('#replay').onclick = () => { lastPlayed ? play(lastPlayed) : run(); };
+$('#speed').onchange = e => { speed = parseFloat(e.target.value); };
+$('#hide').onclick = toggleUI;
+addEventListener('keydown', e => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'h') toggleUI();
+  if (k === 'r') $('#replay').click();
+});
+document.body.addEventListener('dblclick', () => { if ($('#ui').style.display === 'none') toggleUI(); });
+$('#sfxcb').onchange = e => {
+  if (e.target.checked){
+    try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); SFX.master = sfxChain(ctx); SFX.live = ctx; }
+    catch(err){ SFX.live = null; e.target.checked = false; stat(ui('noSound')); }
+  } else { try { SFX.live && SFX.live.close(); } catch(err){} SFX.live = null; }
+};
+new ResizeObserver(fit).observe($('#ui'));
+
+(async () => {
+  try { if (window.claude && claude.use) sampleFn = await claude.use('sample'); } catch(e){ sampleFn = null; }
+  if (sampleFn) $('#ai').style.display = 'flex';
+  fit();
+})();
+
+const Q = new URLSearchParams(location.search);
+if (parseFloat(Q.get('speed')) > 0){ speed = parseFloat(Q.get('speed')); }
+if (Q.get('clean') === '1') $('#ui').style.display = 'none';
+const fontsReady = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+// за render.mjs: window.swarm.play(запис или план) връща promise, който приключва, когато анимацията е готова
+window.swarm = {run, play:o => o && o.format === 'swarm-trace/1' ? play(o) : run(o), renderAudio, sanitize, DEFAULT_PLAN, DEFAULT_BLOG, DEFAULT_NEWS, TYPES, fontsReady};
+
+LANG = Q.get('lang') ? (Q.get('lang') === 'en' ? 'en' : 'bg') : UI_LANG;
+fit(); resetStage();
+if (Q.get('autorun') !== '0') fontsReady.then(() => setTimeout(() => run(), 400));
+</script>
+</body>
+</html>

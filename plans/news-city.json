@@ -1,0 +1,20 @@
+{
+  "type": "news",
+  "url": "harborpost.news",
+  "brand": "Harbor Post",
+  "date": "Wed, 11 Nov",
+  "sections": ["Top", "City", "Sea", "Sport"],
+  "ticker": { "label": "Breaking", "text": "Island ferry runs again today" },
+  "lead": {
+    "img": "⛴️", "kicker": "Transport", "title": "Island ferry sails again",
+    "deck": "The renovated ferry carries its first passengers this morning.",
+    "byline": "By Lena Hart · 2h ago"
+  },
+  "stories": [
+    { "title": "Fish market moves to the new pier", "meta": "1h ago · City" },
+    { "title": "Lighthouse tours return for the season", "meta": "3h ago · Culture" },
+    { "title": "Youth sailing cup draws record crowd", "meta": "5h ago · Sport" }
+  ],
+  "footer": { "name": "Harbor Post", "line": "© 2026 Harbor Post · fictional demo" },
+  "theme": { "accent": "#a3261b", "bg": "#f9f4e8", "ink": "#1f1d1a" }
+}

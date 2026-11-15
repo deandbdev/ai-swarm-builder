@@ -1,0 +1,14 @@
+{
+  "name": "ai-swarm-builder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A team of AI agents builds a web page; the session is replayed and rendered to a vertical video.",
+  "scripts": {
+    "render": "node render.mjs",
+    "render:all": "node render.mjs --all"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "type": "blog",
+  "url": "wanderpages.blog",
+  "brand": "Wander Pages ✈",
+  "nav": ["Stories", "Guides", "About"],
+  "post": { "cover": "🌄", "tag": "Hiking", "title": "Three days across the Rila lakes", "meta": "By Mia · 8 min read" },
+  "rows": [
+    { "icon": "🥾", "title": "How to pick boots you won't regret", "meta": "Nov 12 · Gear" },
+    { "icon": "🍲", "title": "What to eat when you carry it all", "meta": "Nov 5 · Food" },
+    { "icon": "📷", "title": "Sunrise photos without a tripod", "meta": "Oct 28 · Photo" }
+  ],
+  "footer": { "text": "New stories by email", "button": "Subscribe" },
+  "theme": { "accent": "#2f6f5e", "bg": "#f4f1ea", "ink": "#1d2a26" }
+}
